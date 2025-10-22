@@ -26,19 +26,19 @@ const state = {
 export default function useDragAndDrop() {
   const { draggedType, isDragOver, isDragging } = state
 
-  const { addNodes, screenToFlowCoordinate, onNodesInitialized, updateNode } = useVueFlow()
+  const { addNodes, getNodes, onNodesInitialized, screenToFlowCoordinate, updateNode } = useVueFlow()
 
   watch(isDragging, (dragging) => {
     document.body.style.userSelect = dragging ? 'none' : ''
   })
 
-  function onDragStart(event, type) {
+  function onDragStart(event, module) {
     if (event.dataTransfer) {
-      event.dataTransfer.setData('application/vueflow', type)
+      event.dataTransfer.setData('application/vueflow', module.name)
       event.dataTransfer.effectAllowed = 'move'
     }
 
-    draggedType.value = type
+    draggedType.value = module
     isDragging.value = true
 
     document.addEventListener('drop', onDragEnd)
@@ -87,11 +87,28 @@ export default function useDragAndDrop() {
 
     const moduleData = draggedType.value
 
+    if (!moduleData) {
+      return
+    }
+
+    const allNodes = getNodes.value
+    const existingNames = new Set(allNodes.map(node => node.data.name))
+    let finalName = moduleData.name
+    let counter = 1
+
+    while (existingNames.has(finalName)) {
+      finalName = `${moduleData.name}_${counter}`
+      counter++
+    }
+
     const newNode = {
       id: nodeId,
       type: 'moduleNode',
       position,
-      data: JSON.parse(JSON.stringify(moduleData)),
+      data: {
+        ...JSON.parse(JSON.stringify(moduleData)), // Keep deep copy
+        name: finalName, // Use the new unique name
+      },
     }
 
     /**
