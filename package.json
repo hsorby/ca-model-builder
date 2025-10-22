@@ -1,0 +1,24 @@
+{
+  "name": "ca-system-builder",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vue-flow/background": "^1.3.2",
+    "@vue-flow/core": "^1.47.0",
+    "@vue-flow/minimap": "^1.5.4",
+    "element-plus": "^2.11.5",
+    "pinia": "^3.0.3",
+    "vue": "^3.5.22",
+    "vue3-libcellml.js": "^0.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "vite": "^7.1.7"
+  }
+}
