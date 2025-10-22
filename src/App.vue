@@ -16,12 +16,12 @@
         <el-upload
           action="#"
           :auto-upload="false"
-          :on-change="handleUnitsFile"
+          :on-change="handleParametersFile"
           :show-file-list="false"
           style="margin-left: 10px"
         >
           <el-button :disabled="libcellml.status !== 'ready'" type="primary"
-            >Load Units</el-button
+            >Load Parameters</el-button
           >
         </el-upload>
       </div>
@@ -72,6 +72,7 @@ import { inject, nextTick, onMounted, ref } from "vue"
 import { ElNotification } from "element-plus"
 import { VueFlow, useVueFlow } from "@vue-flow/core"
 import { MiniMap } from "@vue-flow/minimap"
+import Papa from 'papaparse'
 
 import { useBuilderStore } from "./stores/builderStore"
 import ModuleList from "./components/ModuleList.vue"
@@ -250,10 +251,38 @@ const handleModuleFile = (file) => {
   reader.readAsText(file.raw)
 }
 
-const handleUnitsFile = (file) => {
-  // ... similar logic for your units file
-  console.log("Units file loaded (logic TBD):", file.name)
-  // e.g., store.setUnits(parsedData);
+const handleParametersFile = (file) => {
+  if (!file) {
+    ElNotification.error("No file selected.")
+    return
+  }
+
+  // Papa Parse can parse the File object (file.raw) directly
+  Papa.parse(file.raw, {
+    header: true,    // <-- This is magic! Converts row 1 to object keys
+    skipEmptyLines: true, // <-- Good for cleanup
+    
+    // 3. This is called when parsing is finished
+    complete: (results) => {
+      // results.data will be an array of objects
+      // e.g., [{ param_name: 'a', value: '1' }, { param_name: 'b', value: '2' }]
+      console.log("Parsed Parameters:", results.data)
+      store.setParameterData(results.data)
+      
+      ElNotification.success({
+        title: "Parameters Loaded",
+        message: `Loaded ${results.data.length} parameters from ${file.name}.`,
+      })
+    },
+
+    // 4. This is called if something goes wrong
+    error: (err) => {
+      ElNotification.error({
+        title: "CSV Parse Error",
+        message: err.message,
+      })
+    },
+  })
 }
 
 const finiteTranslateExtent = [

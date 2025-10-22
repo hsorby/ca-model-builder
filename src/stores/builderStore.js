@@ -1,23 +1,23 @@
-import { defineStore } from 'pinia'
-import { ref, computed }from 'vue'
+import { defineStore } from "pinia"
+import { ref, computed } from "vue"
 
 // 'builder' is the store's ID
-export const useBuilderStore = defineStore('builder', () => {
+export const useBuilderStore = defineStore("builder", () => {
   // --- STATE ---
-  
+
   // Holds the *definitions* loaded from your file
-  const availableModules = ref([]); 
-  
+  const availableModules = ref([])
+  const parameterData = ref([])
+
   // Holds the *instances* of modules placed on the workbench
   // We'll add x/y coordinates and a unique ID
-  const workbenchModules = ref([]);
+  const workbenchModules = ref([])
 
   // Holds the connections between module ports
-  const connections = ref([]);
+  const connections = ref([])
 
   // (You'll also add your 'units' data here)
-  const units = ref(null);
-
+  const units = ref(null)
 
   // --- ACTIONS ---
 
@@ -26,7 +26,15 @@ export const useBuilderStore = defineStore('builder', () => {
    * @param {Array} modules - The array of module objects.
    */
   function setAvailableModules(modules) {
-    availableModules.value = modules;
+    availableModules.value = modules
+  }
+
+  /**
+   * Sets the parameter data.
+   * @param {*} data - The parameter data to set.
+   */
+  function setParameterData(data) {
+    parameterData.value = data
   }
 
   /**
@@ -55,8 +63,8 @@ export const useBuilderStore = defineStore('builder', () => {
    */
   function addModuleToWorkbench(moduleName, position) {
     // Find the base definition
-    const moduleDef = availableModules.value.find(m => m.name === moduleName);
-    
+    const moduleDef = availableModules.value.find((m) => m.name === moduleName)
+
     if (moduleDef) {
       // Create a new *instance* for the workbench
       const newModuleInstance = {
@@ -64,29 +72,28 @@ export const useBuilderStore = defineStore('builder', () => {
         id: `instance_${Date.now()}`, // Give it a unique ID
         x: position.x,
         y: position.y,
-      };
-      
-      workbenchModules.value.push(newModuleInstance);
-      console.log("Added to workbench:", newModuleInstance);
+      }
+
+      workbenchModules.value.push(newModuleInstance)
+      console.log("Added to workbench:", newModuleInstance)
     }
   }
-  
+
   /**
    * Called when a module is dragged *on* the workbench.
    * @param {string} moduleId - The unique ID of the module instance.
    * @param {object} position - The new { x, y } coordinates.
    */
   function moveModule(moduleId, position) {
-    const module = workbenchModules.value.find(m => m.id === moduleId);
+    const module = workbenchModules.value.find((m) => m.id === moduleId)
     if (module) {
-      module.x = position.x;
-      module.y = position.y;
+      module.x = position.x
+      module.y = position.y
     }
   }
-  
+
   // --- GETTERS (computed) ---
   // (We don't need any yet, but they would go here)
-
 
   return {
     // State
@@ -97,8 +104,9 @@ export const useBuilderStore = defineStore('builder', () => {
 
     // Actions
     addModuleFile,
-    setAvailableModules,
     addModuleToWorkbench,
-    moveModule
+    moveModule,
+    setAvailableModules,
+    setParameterData,
   }
 })
