@@ -5,24 +5,51 @@
     ref="moduleNode"
     :class="{ selected: selected }"
   >
-    <el-card :class="[vesselTypeClass, 'module-card']" shadow="hover">
-      <div class="module-name">
-        {{ data.name }}
+    <NodeResizer min-width="180" min-height="75" :is-visible="selected" />
+
+    <el-card :class="[domainTypeClass, 'module-card']" shadow="hover">
+      <div class="module-name" @dblclick="startEditing">
+        <span v-if="!isEditing" class="module-name">
+          {{ data.name }}
+        </span>
+        <el-input
+          v-else
+          ref="inputRef"
+          v-model="editingName"
+          size="small"
+          @blur="saveEdit"
+          @keyup.enter="saveEdit"
+        />
         <div class="button-group">
-          <el-dropdown trigger="click" @command="handleSetVesselType">
+          <el-dropdown trigger="click" @command="handleSetDomainType">
             <el-button size="small" circle>
-              <el-icon><Edit /></el-icon>
+              <el-icon><Key /></el-icon>
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="artery">Artery</el-dropdown-item>
-                <el-dropdown-item command="vein">Vein</el-dropdown-item>
-                <el-dropdown-item command="capillary"
-                  >Capillary</el-dropdown-item
+                <el-dropdown-item command="membrane">Membrane</el-dropdown-item>
+                <el-dropdown-item command="process">Process</el-dropdown-item>
+                <el-dropdown-item command="compartment"
+                  >Compartment</el-dropdown-item
                 >
+                <el-dropdown-item command="species">Species</el-dropdown-item>
                 <el-dropdown-item command="undefined" divided
                   >Reset to Default</el-dropdown-item
                 >
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+
+          <el-dropdown trigger="click" @command="addPort({ type: $event })">
+            <el-button size="small" circle>
+              <el-icon><Place /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="left">Left</el-dropdown-item>
+                <el-dropdown-item command="right">Right</el-dropdown-item>
+                <el-dropdown-item command="top">Top</el-dropdown-item>
+                <el-dropdown-item command="bottom">Bottom</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -32,24 +59,6 @@
           </el-button>
         </div>
       </div>
-      <!-- <el-dropdown trigger="click" @command="handleAddPort">
-        <el-button size="small" circle>
-          <el-icon><Plus /></el-icon>
-        </el-button>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item
-              v-for="port in knownPortOptions"
-              :key="port.name"
-              :command="port"
-              :disabled="portExists(port.name)"
-            >
-              {{ port.name }} ({{ port.type }})
-            </el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-    </div> -->
     </el-card>
 
     <template v-for="(port, index) in data.ports" :key="port.name" class="port">
@@ -58,15 +67,27 @@
         effect="dark"
         :content="port.name"
         placement="bottom"
+        :show-after="1000"
       >
         <Handle
-          :id="port.name"
-          :ref="'handle_' + port.name"
-          :type="port.type === 'in' ? 'target' : 'source'"
-          :position="port.type === 'in' ? Position.Left : Position.Right"
+          :id="'port_' + port.type + '_' + index"
+          :ref="'handle_' + port.type + '_' + index"
+          type="source"
+          :position="portPosition(port.type)"
           :style="getHandleStyle(index, port)"
           class="port-handle"
         />
+        <template #content>
+          <el-button
+            class="delete-port-btn"
+            type="danger"
+            :icon="Delete"
+            circle
+            plain
+            size="small"
+            @click.stop="removePort(index)"
+          />
+        </template>
       </el-tooltip>
     </template>
   </div>
@@ -75,7 +96,8 @@
 <script setup>
 import { computed, nextTick, ref, useId } from "vue"
 import { Handle, Position, useVueFlow } from "@vue-flow/core"
-import { Edit, Plus } from "@element-plus/icons-vue"
+import { NodeResizer } from "@vue-flow/node-resizer"
+import { Delete, Edit, Key, Place, Plus } from "@element-plus/icons-vue"
 
 const { updateNodeData, updateNodeInternals } = useVueFlow()
 
@@ -99,12 +121,6 @@ const emit = defineEmits(["open-port-dialog"])
 const id = useId()
 const moduleNode = ref(null)
 
-const knownPortOptions = [
-  { name: "new_port_A", type: "in" },
-  { name: "new_port_B", type: "out" },
-  { name: "extra_input", type: "in" },
-]
-
 async function openAddPortDialog() {
   emit("open-port-dialog", {
     nodeId: props.id,
@@ -112,30 +128,35 @@ async function openAddPortDialog() {
   })
 }
 
-const vesselTypeClass = computed(() => {
-  return props.data.vesselType
-    ? `vessel-type-${props.data.vesselType}`
-    : "vessel-type-default"
+const domainTypeClass = computed(() => {
+  return props.data.domainType
+    ? `domain-type-${props.data.domainType}`
+    : "domain-type-default"
 })
 
-function handleSetVesselType(typeCommand) {
-  // If the command is the string "undefined", set the value to undefined
+function portPosition(type) {
+  switch (type) {
+    case "left":
+      return Position.Left
+    case "right":
+      return Position.Right
+    case "top":
+      return Position.Top
+    case "bottom":
+      return Position.Bottom
+    default:
+      return Position.Left
+  }
+}
+
+function handleSetDomainType(typeCommand) {
   const newType = typeCommand === "undefined" ? undefined : typeCommand
-  console.log("Setting vessel type to:", newType)
-  updateNodeData(props.id, { vesselType: newType })
+  updateNodeData(props.id, { domainType: newType })
 }
 
-const portExists = (portName) => {
-  return props.data.ports.some((p) => p.name === portName)
+function portCount(aspect) {
+  return props.data.ports.filter((p) => p.type === aspect).length
 }
-
-const rightPortCount = computed(() => {
-  return props.data.ports.filter((p) => p.type === "out").length
-})
-
-const leftPortCount = computed(() => {
-  return props.data.ports.filter((p) => p.type === "in").length
-})
 
 function getPositionIndex(fullList, globalIndex) {
   const targetPosition = fullList[globalIndex].type
@@ -153,24 +174,45 @@ function getPositionIndex(fullList, globalIndex) {
 }
 
 function getHandleStyle(index, port) {
-  const n = port.type === "in" ? leftPortCount.value : rightPortCount.value
+  const n = portCount(port.type)
   // Space between each port.
   const portSpacing = 16
   const positionIndex = getPositionIndex(props.data.ports, index)
 
+  // This calculates the offset from the center
+  const offset = portSpacing * (positionIndex - (n - 1) / 2)
+
+  if (["top", "bottom"].includes(port.type)) {
+    // Let CSS calculate the 50% mark and apply the offset
+    return {
+      left: `calc(50% + ${offset}px)`,
+    }
+  }
+
+  // Let CSS calculate the 50% mark and apply the offset
   return {
-    top: `${
-      portSpacing * (positionIndex - (n - 1) / 2) +
-      moduleNode.value?.clientHeight / 2
-    }px`,
+    top: `calc(50% + ${offset}px)`,
   }
 }
 
-const handleAddPort = async (portToAdd) => {
-  if (portExists(portToAdd.name)) {
-    return // Don't add duplicates
-  }
+async function removePort(indexToRemove) {
+  // Create a new array filtering out the port we want to remove
+  const newPortsArray = props.data.ports.filter((port, index) => {
+    // Keep the port only if its index does NOT match indexToRemove
+    return index !== indexToRemove
+  })
 
+  // Update the node's data
+  updateNodeData(props.id, { ports: newPortsArray })
+
+  // Wait for Vue to update the DOM
+  await nextTick()
+
+  // Tell Vue Flow to re-scan the node's handles
+  updateNodeInternals(props.id)
+}
+
+const addPort = async (portToAdd) => {
   // Create a new array with the old ports + the new one
   const newPortsArray = [...props.data.ports, portToAdd]
 
@@ -180,16 +222,48 @@ const handleAddPort = async (portToAdd) => {
   await nextTick()
   updateNodeInternals(props.id)
 }
+
+const isEditing = ref(false)
+const editingName = ref("")
+const inputRef = ref(null) // This is a template ref for the input
+
+// This function is triggered by the double-click
+async function startEditing() {
+  // Don't allow click-through to the flow pane
+  event.stopPropagation()
+
+  isEditing.value = true
+  editingName.value = props.data.name
+
+  // Wait for Vue to re-render and show the input
+  await nextTick()
+
+  // Focus the input
+  inputRef.value?.focus()
+}
+
+// This is triggered by pressing Enter or clicking away
+function saveEdit() {
+  if (!editingName.value || editingName.value.trim() === "") {
+    isEditing.value = false // Cancel edit if name is empty
+    return
+  }
+
+  // Update the node's data in the store
+  updateNodeData(props.id, { name: editingName.value })
+  isEditing.value = false
+}
 </script>
 
 <style scoped>
 .module-node {
-  width: 180px;
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   position: relative;
+  width: 100%;
+  height: 100%;
 }
 .module-node.selected {
   /* Use the Element Plus primary color for the border */
@@ -198,18 +272,31 @@ const handleAddPort = async (portToAdd) => {
   /* Add a "focus ring" glow using the primary color */
   box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.4);
 }
+
+.module-card {
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.module-name {
+  pointer-events: none;
+}
+
+.module-name span,
+:deep(.module-name .el-input),
+.button-group {
+  pointer-events: auto;
+}
+
 .title {
   background: #f9f9f9;
   font-weight: bold;
   padding: 8px;
   border-bottom: 1px solid #eee;
   border-radius: 8px 8px 0 0;
-}
-.ports {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
 }
 
 .module-header {
@@ -223,12 +310,6 @@ const handleAddPort = async (portToAdd) => {
   font-weight: bold;
 }
 
-.ports-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 /* This is still needed from the last step to ensure
   the handle is *above* the card's content, not just unclipped.
 */
@@ -240,19 +321,23 @@ const handleAddPort = async (portToAdd) => {
   background: #000000;
 }
 
-.vessel-type-default.el-card {
+.domain-type-default.el-card {
   background-color: #ffffff;
 }
 
-.vessel-type-artery.el-card {
-  background-color: #f1f5fb;
-}
-
-.vessel-type-vein.el-card {
+.domain-type-compartment.el-card {
   background-color: #ffe7e1;
 }
 
-.vessel-type-capillary.el-card {
-  background-color: #e9f5f1;
+.domain-type-membrane.el-card {
+  background-color: #ffe2ec;
+}
+
+.domain-type-process.el-card {
+  background-color: #e1edff;
+}
+
+.domain-type-species.el-card {
+  background-color: #d1fff0;
 }
 </style>

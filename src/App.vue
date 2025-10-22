@@ -88,7 +88,8 @@ const nodes = ref([])
 
 onConnect(addEdges)
 
-import testModuleContent from "./assets/bg_modules.cellml?raw"
+import testModuleBGContent from "./assets/bg_modules.cellml?raw"
+import testModuleColonContent from "./assets/colon_FTU_modules.cellml?raw"
 
 const store = useBuilderStore()
 
@@ -258,9 +259,9 @@ const finiteTranslateExtent = [
 onMounted(async () => {
   // import.meta.env.DEV is a Vite variable that is true
   // only when running 'yarn dev'
-  if (import.meta.env.DEVOFF) {
+  if (import.meta.env.DEV) {
     await libcellmlReadyPromise
-    const result = processModuleData(testModuleContent)
+    const result = processModuleData(testModuleColonContent)
     if (result.type !== "success") {
       throw new Error("Failed to process test module file.")
     } else {

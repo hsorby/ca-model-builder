@@ -370,6 +370,14 @@
     d3-selection "^3.0.0"
     d3-zoom "^3.0.0"
 
+"@vue-flow/node-resizer@^1.5.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@vue-flow/node-resizer/-/node-resizer-1.5.0.tgz#f2cd6f7ed763bb32ab25f080f27e1917674f87fa"
+  integrity sha512-FmvOZ6+yVrBEf+8oJcCU20PUZ105QsyM01iiP4vTKHGJ01hzoh9d0/wP9iJkxkIpvBU59CyOHyTKQZlDr4qDhA==
+  dependencies:
+    d3-drag "^3.0.0"
+    d3-selection "^3.0.0"
+
 "@vue/compiler-core@3.5.22":
   version "3.5.22"
   resolved "https://registry.yarnpkg.com/@vue/compiler-core/-/compiler-core-3.5.22.tgz#bb8294a0dd31df540563cc6ffa0456f1f7687b97"
