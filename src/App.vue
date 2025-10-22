@@ -308,14 +308,15 @@ body {
 }
 
 .workbench-main {
-  position: relative; /* Crucial for positioning modules */
+  position: relative;
   background-color: #f4f4f5;
-  overflow: hidden; /* Prevent scrolling for this demo */
+  overflow: hidden;
   padding: 0;
 }
 
+.vue-flow__connection-path,
 .vue-flow__edge-path {
-  stroke-width: 5px; /* <-- Change this value as you like */
+  stroke-width: 5px;
 }
 
 /* (Optional) You can also make selected edges stand out 
