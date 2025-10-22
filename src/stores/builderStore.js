@@ -30,6 +30,25 @@ export const useBuilderStore = defineStore('builder', () => {
   }
 
   /**
+   * Adds a new file and its modules to the list.
+   * If the file already exists, it will be replaced.
+   */
+  function addModuleFile(payload) {
+    // payload is { filename: 'moduleFileA.cellml', modules: [...] }
+    const existingFile = this.availableModules.find(
+      (f) => f.filename === payload.filename
+    )
+
+    if (existingFile) {
+      // Replace existing file's modules
+      existingFile.modules = payload.modules
+    } else {
+      // Add new file to the list
+      this.availableModules.push(payload)
+    }
+  }
+
+  /**
    * Called when a module is dropped onto the workbench.
    * @param {string} moduleName - The name of the module to add.
    * @param {object} position - { x, y } coordinates from the drop event.
@@ -77,6 +96,7 @@ export const useBuilderStore = defineStore('builder', () => {
     units,
 
     // Actions
+    addModuleFile,
     setAvailableModules,
     addModuleToWorkbench,
     moveModule

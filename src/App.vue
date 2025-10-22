@@ -63,7 +63,7 @@
   <AddPortDialog
     v-model="addPortDialogVisible"
     :existing-ports="currentEditingNode.ports"
-    @confirm="onAddPortConfirm" 
+    @confirm="onAddPortConfirm"
   />
 </template>
 
@@ -80,7 +80,8 @@ import ModuleNode from "./components/ModuleNode.vue"
 import useDragAndDrop from "./composables/useDnD"
 import AddPortDialog from "./components/AddPortDialog.vue"
 
-const { addEdges, onConnect, updateNodeData, updateNodeInternals } = useVueFlow()
+const { addEdges, onConnect, updateNodeData, updateNodeInternals } =
+  useVueFlow()
 
 const { onDragOver, onDrop, onDragLeave, isDragOver } = useDragAndDrop()
 
@@ -90,6 +91,10 @@ onConnect(addEdges)
 
 import testModuleBGContent from "./assets/bg_modules.cellml?raw"
 import testModuleColonContent from "./assets/colon_FTU_modules.cellml?raw"
+const testData = {
+  filename: "colon_FTU_modules.cellml",
+  content: testModuleColonContent,
+}
 
 const store = useBuilderStore()
 
@@ -102,7 +107,7 @@ function onOpenPortDialog(eventPayload) {
   // Store which node we're editing
   currentEditingNode.value = {
     nodeId: eventPayload.nodeId,
-    ports: eventPayload.ports
+    ports: eventPayload.ports,
   }
   // Open the dialog
   addPortDialogVisible.value = true
@@ -113,15 +118,12 @@ async function onAddPortConfirm(portToAdd) {
   if (!nodeId) return
 
   // Get the node's current data (we could also get this from the store)
-  const node = nodes.value.find(n => n.id === nodeId)
+  const node = nodes.value.find((n) => n.id === nodeId)
   if (!node) return
 
-  const newPortsArray = [
-    ...node.data.ports,
-    portToAdd
-  ]
+  const newPortsArray = [...node.data.ports, portToAdd]
 
-  console.log('Adding port:', portToAdd, 'to node:', nodeId)
+  console.log("Adding port:", portToAdd, "to node:", nodeId)
   // Update the node's data in the main state
   updateNodeData(nodeId, { ports: newPortsArray })
 
@@ -130,7 +132,7 @@ async function onAddPortConfirm(portToAdd) {
 
   // Tell Vue Flow to re-scan the node
   updateNodeInternals(nodeId)
-  
+
   // (Dialog closes itself via v-model)
 }
 
@@ -197,12 +199,14 @@ function processModuleData(cellmlString) {
     })
     comp.delete()
   }
-  store.setAvailableModules(data)
+  // store.setAvailableModules(data)
 
-  return { type: "success", model, data }
+  model.delete()
+  return { type: "success", data }
 }
 
 const handleModuleFile = (file) => {
+  const filename = file.name
   const reader = new FileReader()
   reader.onload = (e) => {
     try {
@@ -216,11 +220,13 @@ const handleModuleFile = (file) => {
               type: "error",
             })
             console.error("Model import issues:", result.issues)
-            return
           }
-        } else {
-          result.model.delete()
+          return
         }
+        store.addModuleFile({
+          filename: filename,
+          modules: result.data,
+        })
       } catch (err) {
         console.error("Error parsing file:", err)
         ElNotification({
@@ -261,13 +267,15 @@ onMounted(async () => {
   // only when running 'yarn dev'
   if (import.meta.env.DEV) {
     await libcellmlReadyPromise
-    const result = processModuleData(testModuleColonContent)
+    const result = processModuleData(testData.content)
     if (result.type !== "success") {
       throw new Error("Failed to process test module file.")
     } else {
-      result.model.delete()
+      store.addModuleFile({
+        filename: testData.filename,
+        modules: result.data,
+      })
     }
-    // You could do the same for your units file here
   }
 })
 </script>

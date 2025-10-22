@@ -51,8 +51,6 @@ const props = defineProps({
   },
 })
 
-console.log("---------------")
-console.log(props.existingPorts)
 const emit = defineEmits([
   'update:modelValue', // Required for v-model
   'confirm'            // Our custom event
