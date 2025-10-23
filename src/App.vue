@@ -50,6 +50,7 @@
             type="info"
             @click="handleExport"
             style="margin-left: 10px"
+            :disabled="!exportAvailable"
           >
             Export Model
           </el-button>
@@ -162,6 +163,7 @@ const currentEditingNode = ref({ nodeId: "", ports: [], name: "" })
 const asideWidth = ref(250)
 
 const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
+const exportAvailable = computed(() => nodes.value.length > 0 && store.parameterData.length > 0)
 
 function onOpenEditDialog(eventPayload) {
   // Store which node we're editing
