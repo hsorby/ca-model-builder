@@ -104,7 +104,13 @@
     @confirm="onEditConfirm"
   />
 
-  <SaveWorkflowDialog v-model="saveDialogVisible" @confirm="onSaveConfirm" />
+  <SaveDialog v-model="saveDialogVisible" @confirm="onSaveConfirm" />
+  <SaveDialog
+    v-model="exportDialogVisible"
+    @confirm="onExportConfirm"
+    title="Export for Circulatory Autogen"
+    suffix=".zip"
+  />
 </template>
 
 <script setup>
@@ -113,6 +119,7 @@ import { ElNotification } from "element-plus"
 import { VueFlow, useVueFlow } from "@vue-flow/core"
 import { DCaret } from "@element-plus/icons-vue"
 import { MiniMap } from "@vue-flow/minimap"
+import JSZip from "jszip"
 import Papa from "papaparse"
 
 import { useBuilderStore } from "./stores/builderStore"
@@ -121,7 +128,7 @@ import Workbench from "./components/WorkbenchArea.vue"
 import ModuleNode from "./components/ModuleNode.vue"
 import useDragAndDrop from "./composables/useDnD"
 import EditModuleDialog from "./components/EditModuleDialog.vue"
-import SaveWorkflowDialog from "./components/SaveWorkflowDialog.vue"
+import SaveDialog from "./components/SaveDialog.vue"
 
 const {
   addEdges,
@@ -150,6 +157,7 @@ const libcellmlReadyPromise = inject("$libcellml_ready")
 const libcellml = inject("$libcellml")
 const editDialogVisible = ref(false)
 const saveDialogVisible = ref(false)
+const exportDialogVisible = ref(false)
 const currentEditingNode = ref({ nodeId: "", ports: [], name: "" })
 const asideWidth = ref(250)
 
@@ -327,12 +335,74 @@ function handleSaveWorkflow() {
   saveDialogVisible.value = true
 }
 
+function handleExport() {
+  exportDialogVisible.value = true
+}
+
+/**
+ * Collects all state and processes it into a zip file for CA ingestion.
+ */
+async function onExportConfirm(fileName) {
+  const notification = ElNotification({
+    title: "Exporting...",
+    message: "Generating and zipping files.",
+    type: "info",
+    duration: 0, // Stays open until closed
+  })
+
+  try {
+    const zip = new JSZip()
+
+    // --- Generate Your Files ---
+
+    // File 1: Your custom placeholder (e.g., a JSON file)
+    // This is where your specialized export logic will go.
+    const customExportData = {
+      message: "This is the placeholder for the specialized export.",
+      nodes: nodes.value,
+      edges: edges.value,
+    }
+    const file1Content = JSON.stringify(customExportData, null, 2)
+    zip.file("model_export.json", file1Content)
+
+    // File 2: The parameters as a CSV file
+    // We use Papa Parse to "unparse" the object array back to a CSV string
+    const file2Content = Papa.unparse(store.parameterData)
+    zip.file("parameters.csv", file2Content)
+
+    // --- Generate and Download the Zip ---
+
+    // Generate the zip file as a "blob" (asynchronously)
+    const zipBlob = await zip.generateAsync({
+      type: "blob",
+      compression: "DEFLATE",
+      compressionOptions: {
+        level: 9,
+      },
+    })
+
+    // Use the same download trick as the save function
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(zipBlob)
+    link.download = `${fileName}.zip`
+    link.click()
+
+    URL.revokeObjectURL(link.href)
+
+    notification.close()
+    ElNotification.success("Export successful!")
+  } catch (error) {
+    notification.close()
+    ElNotification.error(`Export failed: ${error.message}`)
+  }
+}
+
 /**
  * Collects all state and downloads it as a JSON file.
  */
 function onSaveConfirm(fileName) {
   // Ensure the filename ends with .json
-  const finalName = fileName.endsWith('.json') ? fileName : `${fileName}.json`
+  const finalName = fileName.endsWith(".json") ? fileName : `${fileName}.json`
 
   // (This is your old logic, moved here)
   const saveState = {
@@ -344,21 +414,21 @@ function onSaveConfirm(fileName) {
     store: {
       availableModules: store.availableModules,
       parameterData: store.parameterData,
-    }
+    },
   }
 
-  const jsonString = JSON.stringify(saveState, null, 2);
-  const blob = new Blob([jsonString], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = finalName; // Use the user's chosen name
-  link.click();
-  
-  URL.revokeObjectURL(url);
-  
-  ElNotification.success('Workflow saved!');
+  const jsonString = JSON.stringify(saveState, null, 2)
+  const blob = new Blob([jsonString], { type: "application/json" })
+  const url = URL.createObjectURL(blob)
+
+  const link = document.createElement("a")
+  link.href = url
+  link.download = finalName // Use the user's chosen name
+  link.click()
+
+  URL.revokeObjectURL(url)
+
+  ElNotification.success("Workflow saved!")
 }
 
 /**
@@ -394,22 +464,6 @@ function handleLoadWorkflow(file) {
   }
 
   reader.readAsText(file.raw)
-}
-
-/**
- * Export model for circulatory autogen ingestion.
- */
-function handleExport() {
-  console.log("Export triggered. Current state:", {
-    nodes: nodes.value,
-    edges: edges.value,
-    parameters: store.parameterData,
-  })
-
-  ElNotification.info({
-    title: "Export (Placeholder)",
-    message: "Export logic is not yet implemented. Check console for data.",
-  })
 }
 
 const finiteTranslateExtent = [

@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="Save Workflow"
+    :title="title"
     width="400px"
     teleported
     @closed="resetForm"
@@ -15,7 +15,7 @@
     >
       <el-form-item label="Filename">
         <el-input v-model="fileName">
-          <template #append>.json</template>
+          <template #append>{{ suffix }}</template>
         </el-input>
       </el-form-item>
     </el-form>
@@ -39,6 +39,14 @@ const props = defineProps({
   modelValue: {
     type: Boolean,
     default: false,
+  },
+  title: {
+    type: String,
+    default: 'Save Workflow',
+  },
+  suffix: {
+    type: String,
+    default: '.json',
   },
   defaultName: {
     type: String,
