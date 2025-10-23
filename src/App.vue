@@ -76,6 +76,7 @@
             :translate-extent="finiteTranslateExtent"
             :max-zoom="1.5"
             :min-zoom="0.8"
+            :connection-line-options="connectionLineOptions"
           >
             <MiniMap />
             <template #node-moduleNode="props">
@@ -117,7 +118,7 @@
 <script setup>
 import { computed, inject, onMounted, ref } from "vue"
 import { ElNotification } from "element-plus"
-import { VueFlow, useVueFlow } from "@vue-flow/core"
+import { MarkerType, useVueFlow, VueFlow } from "@vue-flow/core"
 import { DCaret } from "@element-plus/icons-vue"
 import { MiniMap } from "@vue-flow/minimap"
 import Papa from "papaparse"
@@ -143,7 +144,16 @@ const {
 
 const { onDragOver, onDrop, onDragLeave, isDragOver } = useDragAndDrop()
 
-onConnect(addEdges)
+onConnect((connection) => {
+  // Match what we specify in connectionLineOptions.
+  const newEdge = {
+    ...connection,
+    type: "smoothstep",
+    markerEnd: MarkerType.ArrowClosed,
+  }
+
+  addEdges(newEdge)
+})
 
 import testModuleBGContent from "./assets/bg_modules.cellml?raw"
 import testModuleColonContent from "./assets/colon_FTU_modules.cellml?raw"
@@ -163,6 +173,14 @@ const saveDialogVisible = ref(false)
 const exportDialogVisible = ref(false)
 const currentEditingNode = ref({ nodeId: "", ports: [], name: "" })
 const asideWidth = ref(250)
+const connectionLineOptions = ref({
+  type: "smoothstep",
+  markerEnd: MarkerType.ArrowClosed,
+  style: {
+    strokeWidth: 5,
+    // stroke: '#b1b1b7', // Can customize color if desired.
+  },
+})
 
 const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
 const exportAvailable = computed(
@@ -364,7 +382,7 @@ async function onExportConfirm(fileName) {
       URL.revokeObjectURL(link.href)
     }
     notification.close()
-    ElNotification.success({message: "Export successful!", offset: 50 });
+    ElNotification.success({ message: "Export successful!", offset: 50 })
   } catch (error) {
     notification.close()
     ElNotification.error(`Export failed: ${error.message}`)
@@ -402,7 +420,7 @@ function onSaveConfirm(fileName) {
 
   URL.revokeObjectURL(url)
 
-  ElNotification.success({message: "Workflow saved!", offset: 50 });
+  ElNotification.success({ message: "Workflow saved!", offset: 50 })
 }
 
 /**
@@ -431,7 +449,10 @@ function handleLoadWorkflow(file) {
       store.availableModules = loadedState.store.availableModules
       store.parameterData = loadedState.store.parameterData
 
-      ElNotification.success({message: "Workflow loaded successfully!", offset: 50 });
+      ElNotification.success({
+        message: "Workflow loaded successfully!",
+        offset: 50,
+      })
     } catch (error) {
       ElNotification.error(`Failed to load workflow: ${error.message}`)
     }
