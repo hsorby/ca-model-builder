@@ -1,14 +1,5 @@
-import { useVueFlow } from '@vue-flow/core'
-import { ref, shallowRef, watch } from 'vue'
-
-let id = 0
-
-/**
- * @returns {string} - A unique id.
- */
-function getId() {
-  return `dndnode_${id++}`
-}
+import { useVueFlow } from "@vue-flow/core"
+import { ref, shallowRef, watch } from "vue"
 
 /**
  * In a real world scenario you'd want to avoid creating refs in a global scope like this as they might not be cleaned up properly.
@@ -26,22 +17,46 @@ const state = {
 export default function useDragAndDrop() {
   const { draggedType, isDragOver, isDragging } = state
 
-  const { addNodes, getNodes, onNodesInitialized, screenToFlowCoordinate, updateNode } = useVueFlow()
+  const {
+    addNodes,
+    getNodes,
+    onNodesInitialized,
+    screenToFlowCoordinate,
+    updateNode,
+  } = useVueFlow()
+
+  function getId() {
+    const allNodes = getNodes.value
+
+    // Find the highest existing ID
+    let maxId = -1
+    allNodes.forEach((node) => {
+      if (node.id.startsWith("dndnode_")) {
+        const numPart = parseInt(node.id.split("_")[1], 10)
+        if (!isNaN(numPart) && numPart > maxId) {
+          maxId = numPart
+        }
+      }
+    })
+
+    // Return the next ID in the sequence
+    return `dndnode_${maxId + 1}`
+  }
 
   watch(isDragging, (dragging) => {
-    document.body.style.userSelect = dragging ? 'none' : ''
+    document.body.style.userSelect = dragging ? "none" : ""
   })
 
   function onDragStart(event, module) {
     if (event.dataTransfer) {
-      event.dataTransfer.setData('application/vueflow', module.name)
-      event.dataTransfer.effectAllowed = 'move'
+      event.dataTransfer.setData("application/vueflow", module.name)
+      event.dataTransfer.effectAllowed = "move"
     }
 
     draggedType.value = module
     isDragging.value = true
 
-    document.addEventListener('drop', onDragEnd)
+    document.addEventListener("drop", onDragEnd)
   }
 
   /**
@@ -56,7 +71,7 @@ export default function useDragAndDrop() {
       isDragOver.value = true
 
       if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = 'move'
+        event.dataTransfer.dropEffect = "move"
       }
     }
   }
@@ -69,7 +84,7 @@ export default function useDragAndDrop() {
     isDragging.value = false
     isDragOver.value = false
     draggedType.value = null
-    document.removeEventListener('drop', onDragEnd)
+    document.removeEventListener("drop", onDragEnd)
   }
 
   /**
@@ -92,7 +107,7 @@ export default function useDragAndDrop() {
     }
 
     const allNodes = getNodes.value
-    const existingNames = new Set(allNodes.map(node => node.data.name))
+    const existingNames = new Set(allNodes.map((node) => node.data.name))
     let finalName = moduleData.name
     let counter = 1
 
@@ -103,7 +118,7 @@ export default function useDragAndDrop() {
 
     const newNode = {
       id: nodeId,
-      type: 'moduleNode',
+      type: "moduleNode",
       position,
       data: {
         ...JSON.parse(JSON.stringify(moduleData)), // Keep deep copy
@@ -118,7 +133,10 @@ export default function useDragAndDrop() {
      */
     const { off } = onNodesInitialized(() => {
       updateNode(nodeId, (node) => ({
-        position: { x: node.position.x - node.dimensions.width / 2, y: node.position.y - node.dimensions.height / 2 },
+        position: {
+          x: node.position.x - node.dimensions.width / 2,
+          y: node.position.y - node.dimensions.height / 2,
+        },
       }))
 
       off()
