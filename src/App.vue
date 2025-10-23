@@ -93,6 +93,7 @@
       </el-main>
     </el-container>
   </el-container>
+
   <EditModuleDialog
     v-model="editDialogVisible"
     :initial-name="currentEditingNode.name"
@@ -102,6 +103,8 @@
     :initial-port-labels="currentEditingNode?.portLabels || []"
     @confirm="onEditConfirm"
   />
+
+  <SaveWorkflowDialog v-model="saveDialogVisible" @confirm="onSaveConfirm" />
 </template>
 
 <script setup>
@@ -118,8 +121,17 @@ import Workbench from "./components/WorkbenchArea.vue"
 import ModuleNode from "./components/ModuleNode.vue"
 import useDragAndDrop from "./composables/useDnD"
 import EditModuleDialog from "./components/EditModuleDialog.vue"
+import SaveWorkflowDialog from "./components/SaveWorkflowDialog.vue"
 
-const { addEdges, edges, nodes, onConnect, setViewport, updateNodeData, viewport } = useVueFlow()
+const {
+  addEdges,
+  edges,
+  nodes,
+  onConnect,
+  setViewport,
+  updateNodeData,
+  viewport,
+} = useVueFlow()
 
 const { onDragOver, onDrop, onDragLeave, isDragOver } = useDragAndDrop()
 
@@ -137,6 +149,7 @@ const store = useBuilderStore()
 const libcellmlReadyPromise = inject("$libcellml_ready")
 const libcellml = inject("$libcellml")
 const editDialogVisible = ref(false)
+const saveDialogVisible = ref(false)
 const currentEditingNode = ref({ nodeId: "", ports: [], name: "" })
 const asideWidth = ref(250)
 
@@ -310,10 +323,18 @@ const handleParametersFile = (file) => {
   })
 }
 
+function handleSaveWorkflow() {
+  saveDialogVisible.value = true
+}
+
 /**
  * Collects all state and downloads it as a JSON file.
  */
-function handleSaveWorkflow() {
+function onSaveConfirm(fileName) {
+  // Ensure the filename ends with .json
+  const finalName = fileName.endsWith('.json') ? fileName : `${fileName}.json`
+
+  // (This is your old logic, moved here)
   const saveState = {
     flow: {
       nodes: nodes.value,
@@ -325,22 +346,16 @@ function handleSaveWorkflow() {
       parameterData: store.parameterData,
     }
   }
-// Convert the state to a JSON string
-  const jsonString = JSON.stringify(saveState, null, 2); // null, 2 for pretty-printing
-  
-  // Create a Blob
+
+  const jsonString = JSON.stringify(saveState, null, 2);
   const blob = new Blob([jsonString], { type: 'application/json' });
-  
-  // Create a URL for the Blob
   const url = URL.createObjectURL(blob);
   
-  // Create a hidden link and click it to trigger download
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'ca-model-builder.json'; // The default filename
+  link.download = finalName; // Use the user's chosen name
   link.click();
   
-  // Clean up the URL object
   URL.revokeObjectURL(url);
   
   ElNotification.success('Workflow saved!');
@@ -350,52 +365,51 @@ function handleSaveWorkflow() {
  * Reads a JSON file and restores the application state.
  */
 function handleLoadWorkflow(file) {
-  const reader = new FileReader();
+  const reader = new FileReader()
 
   reader.onload = (e) => {
     try {
-      const loadedState = JSON.parse(e.target.result);
+      const loadedState = JSON.parse(e.target.result)
 
       // Validate the loaded file
       if (!loadedState.flow || !loadedState.store) {
-        throw new Error('Invalid workflow file format.');
+        throw new Error("Invalid workflow file format.")
       }
 
       // Restore Vue Flow state
       // We use `setViewport` to apply zoom/pan
-      setViewport(loadedState.flow.viewport);
+      setViewport(loadedState.flow.viewport)
       // We directly set the reactive refs
-      nodes.value = loadedState.flow.nodes;
-      edges.value = loadedState.flow.edges;
-      
+      nodes.value = loadedState.flow.nodes
+      edges.value = loadedState.flow.edges
+
       // Restore Pinia store state
-      store.availableModules = loadedState.store.availableModules;
-      store.parameterData = loadedState.store.parameterData;
+      store.availableModules = loadedState.store.availableModules
+      store.parameterData = loadedState.store.parameterData
 
-      ElNotification.success('Workflow loaded successfully!');
-
+      ElNotification.success("Workflow loaded successfully!")
     } catch (error) {
-      ElNotification.error(`Failed to load workflow: ${error.message}`);
+      ElNotification.error(`Failed to load workflow: ${error.message}`)
     }
-  };
+  }
 
-  reader.readAsText(file.raw);
+  reader.readAsText(file.raw)
 }
 
 /**
  * Export model for circulatory autogen ingestion.
  */
 function handleExport() {
-  console.log('Export triggered. Current state:', {
+  console.log("Export triggered. Current state:", {
     nodes: nodes.value,
     edges: edges.value,
     parameters: store.parameterData,
-  });
+  })
 
   ElNotification.info({
-    title: 'Export (Placeholder)',
-    message: 'Export logic is not yet implemented. Check console for data.',
-  });
+    title: "Export (Placeholder)",
+    message: "Export logic is not yet implemented. Check console for data.",
+  })
 }
 
 const finiteTranslateExtent = [

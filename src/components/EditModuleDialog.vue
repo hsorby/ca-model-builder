@@ -202,7 +202,7 @@ function deletePortLabel(index) {
 .el-form-label {
   font-weight: 600;
   margin-bottom: 8px;
-  display: inline-block;
+  display: block;
 }
 .port-label-row {
   display: flex;
