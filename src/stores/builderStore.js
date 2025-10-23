@@ -75,7 +75,6 @@ export const useBuilderStore = defineStore("builder", () => {
       }
 
       workbenchModules.value.push(newModuleInstance)
-      console.log("Added to workbench:", newModuleInstance)
     }
   }
 

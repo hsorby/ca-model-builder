@@ -55,7 +55,7 @@
           </el-dropdown>
 
           <el-button size="small" circle @click="openAddPortDialog">
-            <el-icon><Plus /></el-icon>
+            <el-icon><Edit /></el-icon>
           </el-button>
         </div>
       </div>
@@ -116,15 +116,16 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(["open-port-dialog"])
+const emit = defineEmits(["open-edit-dialog"])
 
 const id = useId()
 const moduleNode = ref(null)
 
 async function openAddPortDialog() {
-  emit("open-port-dialog", {
+  emit("open-edit-dialog", {
     nodeId: props.id,
     ports: props.data.ports,
+    name: props.data.name,
   })
 }
 

@@ -1,7 +1,7 @@
 <template>
   <el-container style="height: 100vh">
     <el-header class="app-header">
-      <h3>Model Builder</h3>
+      <h3>Circulatory Autogen Model Builder</h3>
       <div class="file-uploads">
         <el-upload
           action="#"
@@ -28,15 +28,18 @@
     </el-header>
 
     <el-container style="flex-grow: 1; min-height: 0">
-      <el-aside width="250px" class="module-aside">
+      <el-aside :width="asideWidth + 'px'" class="module-aside">
         <h4 style="margin-top: 0">Available Modules</h4>
         <ModuleList />
       </el-aside>
 
+      <div class="resize-handle" @mousedown="startResize">
+        <el-icon class="handle-icon"><DCaret /></el-icon>
+      </div>
+
       <el-main class="workbench-main">
         <div class="dnd-flow" @drop="onDrop">
           <VueFlow
-            :nodes="nodes"
             @dragover="onDragOver"
             @dragleave="onDragLeave"
             :translate-extent="finiteTranslateExtent"
@@ -49,7 +52,7 @@
                 :id="props.id"
                 :data="props.data"
                 :selected="props.selected"
-                @open-port-dialog="onOpenPortDialog"
+                @open-edit-dialog="onOpenEditDialog"
               />
             </template>
             <Workbench>
@@ -60,33 +63,33 @@
       </el-main>
     </el-container>
   </el-container>
-  <AddPortDialog
-    v-model="addPortDialogVisible"
-    :existing-ports="currentEditingNode.ports"
-    @confirm="onAddPortConfirm"
+  <EditModuleDialog
+    v-model="editDialogVisible"
+    :initial-name="currentEditingNode.name"
+    :node-id="currentEditingNode.nodeId"
+    :existing-names="allNodeNames"
+    @confirm="onEditConfirm"
   />
 </template>
 
 <script setup>
-import { inject, nextTick, onMounted, ref } from "vue"
+import { computed, inject, onMounted, ref } from "vue"
 import { ElNotification } from "element-plus"
 import { VueFlow, useVueFlow } from "@vue-flow/core"
+import { DCaret } from "@element-plus/icons-vue"
 import { MiniMap } from "@vue-flow/minimap"
-import Papa from 'papaparse'
+import Papa from "papaparse"
 
 import { useBuilderStore } from "./stores/builderStore"
 import ModuleList from "./components/ModuleList.vue"
 import Workbench from "./components/WorkbenchArea.vue"
 import ModuleNode from "./components/ModuleNode.vue"
 import useDragAndDrop from "./composables/useDnD"
-import AddPortDialog from "./components/AddPortDialog.vue"
+import EditModuleDialog from "./components/EditModuleDialog.vue"
 
-const { addEdges, onConnect, updateNodeData, updateNodeInternals } =
-  useVueFlow()
+const { addEdges, nodes, onConnect, updateNodeData } = useVueFlow()
 
 const { onDragOver, onDrop, onDragLeave, isDragOver } = useDragAndDrop()
-
-const nodes = ref([])
 
 onConnect(addEdges)
 
@@ -101,38 +104,35 @@ const store = useBuilderStore()
 
 const libcellmlReadyPromise = inject("$libcellml_ready")
 const libcellml = inject("$libcellml")
-const addPortDialogVisible = ref(false)
-const currentEditingNode = ref({ nodeId: null, ports: [] })
+const editDialogVisible = ref(false)
+const currentEditingNode = ref({ nodeId: "", ports: [], name: "" })
+const asideWidth = ref(250)
 
-function onOpenPortDialog(eventPayload) {
+const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
+
+function onOpenEditDialog(eventPayload) {
   // Store which node we're editing
   currentEditingNode.value = {
     nodeId: eventPayload.nodeId,
     ports: eventPayload.ports,
+    name: eventPayload.name,
   }
   // Open the dialog
-  addPortDialogVisible.value = true
+  editDialogVisible.value = true
 }
 
-async function onAddPortConfirm(portToAdd) {
+async function onEditConfirm(updatedData) {
   const nodeId = currentEditingNode.value.nodeId
   if (!nodeId) return
 
-  // Get the node's current data (we could also get this from the store)
-  const node = nodes.value.find((n) => n.id === nodeId)
-  if (!node) return
-
-  const newPortsArray = [...node.data.ports, portToAdd]
-
-  console.log("Adding port:", portToAdd, "to node:", nodeId)
-  // Update the node's data in the main state
-  updateNodeData(nodeId, { ports: newPortsArray })
+  // const newPortsArray = [...node.data.ports, portToAdd]
+  updateNodeData(nodeId, { name: updatedData.name })
 
   // Wait for Vue to update the DOM
-  await nextTick()
+  // await nextTick()
 
   // Tell Vue Flow to re-scan the node
-  updateNodeInternals(nodeId)
+  // updateNodeInternals(nodeId)
 
   // (Dialog closes itself via v-model)
 }
@@ -259,16 +259,15 @@ const handleParametersFile = (file) => {
 
   // Papa Parse can parse the File object (file.raw) directly
   Papa.parse(file.raw, {
-    header: true,    // <-- This is magic! Converts row 1 to object keys
+    header: true, // <-- This is magic! Converts row 1 to object keys
     skipEmptyLines: true, // <-- Good for cleanup
-    
+
     // 3. This is called when parsing is finished
     complete: (results) => {
       // results.data will be an array of objects
       // e.g., [{ param_name: 'a', value: '1' }, { param_name: 'b', value: '2' }]
-      console.log("Parsed Parameters:", results.data)
       store.setParameterData(results.data)
-      
+
       ElNotification.success({
         title: "Parameters Loaded",
         message: `Loaded ${results.data.length} parameters from ${file.name}.`,
@@ -289,6 +288,34 @@ const finiteTranslateExtent = [
   [-1000, -1000],
   [1000, 1000],
 ]
+
+const onResizing = (event) => {
+  // Prevent default to stop text selection, etc.
+  event.preventDefault()
+
+  // Set the new width, but with constraints
+  // (e.g., min 200px, max 500px)
+  asideWidth.value = Math.max(200, Math.min(event.clientX, 500))
+}
+
+// This function removes the global listeners
+const stopResize = () => {
+  window.removeEventListener("mousemove", onResizing)
+  window.removeEventListener("mouseup", stopResize)
+  // Re-enable text selection
+  document.body.style.userSelect = ""
+}
+
+// This function is called on mousedown
+const startResize = (event) => {
+  event.preventDefault()
+
+  // Add the listeners to the entire window
+  window.addEventListener("mousemove", onResizing)
+  window.addEventListener("mouseup", stopResize)
+  // Disable text selection globally while dragging
+  document.body.style.userSelect = "none"
+}
 
 // --- Development Test Data ---
 onMounted(async () => {
@@ -334,6 +361,8 @@ body {
 
   display: flex;
   flex-direction: column;
+
+  flex-shrink: 0;
 }
 
 .workbench-main {
@@ -353,5 +382,39 @@ body {
 .vue-flow__edge.selected .vue-flow__edge-path {
   stroke: #409eff; /* Element Plus primary color */
   stroke-width: 7px;
+}
+
+.resize-handle {
+  width: 5px;
+  height: 100%;
+  /* transform: translateY(50%); */
+  cursor: col-resize;
+  background-color: #f4f2f2;
+  border-left: 1px solid #dcdfe6;
+  border-right: 1px solid #dcdfe6;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.resize-handle:hover {
+  background-color: #e0e0e0;
+}
+
+.handle-icon {
+  /* Center the icon */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  
+  /* This does three things:
+    1. translate(-50%, -50%): Moves the icon back by half its own size to perfectly center it.
+    2. rotate(90deg): Rotates it to point left/right.
+  */
+  transform: translate(-53%, -50%) rotate(90deg);
+  
+  /* Style it */
+  font-size: 26px;
+  color: #434344; /* Element Plus secondary text color */
+  z-index: 10;
 }
 </style>

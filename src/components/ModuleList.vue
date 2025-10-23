@@ -49,6 +49,7 @@ const { onDragStart } = useDragAndDrop()
 
 const filterText = ref("")
 const activeCollapseNames = ref([])
+const knownFilenames = ref(new Set())
 
 const filteredModuleFiles = computed(() => {
   const lowerCaseFilter = filterText.value.toLowerCase()
@@ -79,20 +80,27 @@ watch(filteredModuleFiles, (newFiles) => {
   // }
 })
 
-// Initially, open all panels
-activeCollapseNames.value = store.availableModules.map((f) => f.filename)
+// Open new panels
+watch(
+  () => store.availableModules,
+  (currentModuleFiles) => {
+    const newFileNames = []
+    for (const file of currentModuleFiles) {
+      if (!knownFilenames.value.has(file.filename)) {
+        newFileNames.push(file.filename)
+        knownFilenames.value.add(file.filename)
+      }
+    }
 
-const filteredModules = computed(() => {
-  if (!filterText.value) {
-    return store.availableModules
+    if (newFileNames.length > 0) {
+      activeCollapseNames.value.push(...newFileNames)
+    }
+  },
+  {
+    deep: true,
+    // immediate: true,
   }
-
-  const lowerCaseFilter = filterText.value.toLowerCase()
-
-  return store.availableModules.filter((module) =>
-    module.name.toLowerCase().includes(lowerCaseFilter)
-  )
-})
+)
 </script>
 
 <style scoped>
