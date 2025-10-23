@@ -254,11 +254,13 @@ function processModuleData(cellmlString, fileName) {
     let options = []
     for (let j = 0; j < comp.variableCount(); j++) {
       let varr = comp.variableByIndex(j)
-      if (varr.interfaceType() === "public") {
+      if (varr.hasInterfaceType(libcellml.library.Variable.InterfaceType.PUBLIC)) {
+        let units = varr.units()
         options.push({
           name: varr.name(),
-          // Add other properties as needed
+          units: units.name(),
         })
+        units.delete()
       }
       varr.delete()
     }

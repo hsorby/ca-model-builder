@@ -101,7 +101,7 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
     let variablesAndUnits = []
     for (const variable of node.data.portOptions || []) {
       variablesAndUnits.push([
-        variable.name, variable.unit || 'missing', 'access', classifyVariable(variable, parameters)
+        variable.name, variable.units || 'missing', 'access', classifyVariable(variable, parameters)
       ])
     }
     module_config.push({
