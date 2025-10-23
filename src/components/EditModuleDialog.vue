@@ -20,32 +20,32 @@
 
       <el-divider />
 
-      <label class="el-form-label">Port Labels</label>
+      <label class="el-form-label">Port Labels:</label>
 
       <div
         v-for="(port, index) in editableData.portLabels"
         :key="index"
         class="port-label-row"
       >
+        <el-input
+          v-model="port.label"
+          placeholder="Enter Label"
+          class="port-label"
+        />
+
         <el-select
           v-model="port.option"
           placeholder="Select Option"
           class="port-select"
         >
           <el-option
-            v-for="optionName in props.portOptions"
-            :key="optionName"
-            :label="optionName"
-            :value="optionName"
-            :disabled="isOptionDisabled(optionName, port.option)"
+            v-for="optionObj in props.portOptions"
+            :key="optionObj.name"
+            :label="optionObj.name"
+            :value="optionObj.name"
+            :disabled="isOptionDisabled(optionObj.name, port.option)"
           />
         </el-select>
-
-        <el-input
-          v-model="port.label"
-          placeholder="Enter Label"
-          class="port-label"
-        />
 
         <el-button
           type="danger"
@@ -56,9 +56,20 @@
         />
       </div>
 
-      <el-button :icon="Plus" circle @click="addPortLabel" class="add-button">
-        Add Label
-      </el-button>
+      <el-tooltip
+        content="Add Port Label"
+        placement="bottom"
+        :show-after="1000"
+      >
+        <el-button
+          type="success"
+          :icon="Plus"
+          plain
+          circle
+          @click="addPortLabel"
+          class="add-button"
+        />
+      </el-tooltip>
     </el-form>
 
     <template #footer>
@@ -141,7 +152,7 @@ function handleConfirm() {
   }
 
   const finalPortLabels = editableData.portLabels.filter(
-    p => p.option && p.label && p.label.trim()
+    (p) => p.option && p.label && p.label.trim()
   )
 
   emit("confirm", {
@@ -186,5 +197,26 @@ function deletePortLabel(index) {
 <style scoped>
 .el-form-item {
   margin-bottom: 15px; /* More space */
+}
+
+.el-form-label {
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: inline-block;
+}
+.port-label-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.port-select {
+  flex: 1;
+}
+.port-label {
+  flex: 1;
+}
+.add-button {
+  margin-top: 10px;
 }
 </style>

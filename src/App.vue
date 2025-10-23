@@ -114,10 +114,9 @@ const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
 
 function onOpenEditDialog(eventPayload) {
   // Store which node we're editing
+  console.log("Edit dialog requested for node:", eventPayload)
   currentEditingNode.value = {
-    nodeId: eventPayload.nodeId,
-    ports: eventPayload.ports,
-    name: eventPayload.name,
+    ...eventPayload
   }
   // Open the dialog
   editDialogVisible.value = true
