@@ -11,21 +11,21 @@ import Papa from "papaparse"
  * @returns {string} - 'global_constant', 'constant', or 'variable'
  */
 function classifyVariable(variable, parameters) {
-  const varName = variable.name;
+  const varName = variable.name
 
   if (!varName || !Array.isArray(parameters)) {
-    console.error("Invalid input to classifyVariable");
-    return 'variable'; // Default or error state
+    console.error("Invalid input to classifyVariable")
+    return "variable" // Default or error state
   }
 
-  let isConstant = false; // Flag to check if we found a prefix match
+  let isConstant = false // Flag to check if we found a prefix match
 
   for (const param of parameters) {
-    const paramName = param.variable_name;
+    const paramName = param.variable_name
 
     // 1. Check for an exact match first
     if (varName === paramName) {
-      return 'global_constant'; // Found exact match, classification is done.
+      return "global_constant" // Found exact match, classification is done.
     }
 
     // 2. Check if the parameter name is a prefix of the variable name
@@ -33,18 +33,18 @@ function classifyVariable(variable, parameters) {
     if (paramName.startsWith(varName) && paramName.length > varName.length) {
       // We found a potential prefix match. We set the flag but continue checking
       // other parameters in case a later one is an *exact* match.
-      isConstant = true;
+      isConstant = true
     }
   }
 
   // 3. After checking all parameters:
   //    If we found a prefix match (and didn't return 'global_constant' earlier)
   if (isConstant) {
-    return 'constant';
+    return "constant"
   }
 
   // 4. If neither exact nor prefix match was found after checking all parameters
-  return 'variable';
+  return "variable"
 }
 
 /**
@@ -101,7 +101,10 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
     let variablesAndUnits = []
     for (const variable of node.data.portOptions || []) {
       variablesAndUnits.push([
-        variable.name, variable.units || 'missing', 'access', classifyVariable(variable, parameters)
+        variable.name,
+        variable.units || "missing",
+        "access",
+        classifyVariable(variable, parameters),
       ])
     }
     module_config.push({
@@ -123,7 +126,7 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
       out_vessels: out_vessels.join(" "),
     })
   }
-  console.log("Parameters:", parameters)
+
   zip.file(
     `${fileName}_module_config.json`,
     JSON.stringify(module_config, null, 2)
