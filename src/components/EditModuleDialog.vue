@@ -17,6 +17,48 @@
       <el-form-item label="Module Name">
         <el-input v-model="editableData.name" placeholder="Enter module name" />
       </el-form-item>
+
+      <el-divider />
+
+      <label class="el-form-label">Port Labels</label>
+
+      <div
+        v-for="(port, index) in editableData.portLabels"
+        :key="index"
+        class="port-label-row"
+      >
+        <el-select
+          v-model="port.option"
+          placeholder="Select Option"
+          class="port-select"
+        >
+          <el-option
+            v-for="optionName in props.portOptions"
+            :key="optionName"
+            :label="optionName"
+            :value="optionName"
+            :disabled="isOptionDisabled(optionName, port.option)"
+          />
+        </el-select>
+
+        <el-input
+          v-model="port.label"
+          placeholder="Enter Label"
+          class="port-label"
+        />
+
+        <el-button
+          type="danger"
+          :icon="Delete"
+          circle
+          plain
+          @click="deletePortLabel(index)"
+        />
+      </div>
+
+      <el-button :icon="Plus" circle @click="addPortLabel" class="add-button">
+        Add Label
+      </el-button>
     </el-form>
 
     <template #footer>
@@ -29,7 +71,7 @@
 </template>
 
 <script setup>
-import { reactive, watch } from "vue"
+import { computed, reactive, watch } from "vue"
 import {
   ElNotification,
   ElDialog,
@@ -38,6 +80,7 @@ import {
   ElInput,
   ElButton,
 } from "element-plus"
+import { Delete, Plus } from "@element-plus/icons-vue"
 
 const props = defineProps({
   // v-model for visibility
@@ -50,6 +93,8 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  portOptions: { type: Array, default: () => [] },
+  initialPortLabels: { type: Array, default: () => [] },
   nodeId: {
     type: String,
     required: true,
@@ -57,7 +102,7 @@ const props = defineProps({
   existingNames: {
     type: Array,
     default: () => [],
-  }
+  },
 })
 
 const emit = defineEmits([
@@ -67,10 +112,14 @@ const emit = defineEmits([
 
 const editableData = reactive({
   name: "",
+  portLabels: [], // Will hold objects like { option: 'var_a', label: 'label_1' }
 })
 
 function resetForm() {
   editableData.name = props.initialName
+  editableData.portLabels = JSON.parse(
+    JSON.stringify(props.initialPortLabels || [])
+  )
 }
 
 function closeDialog() {
@@ -83,31 +132,59 @@ function handleConfirm() {
     return
   }
 
-  const nameExists = props.existingNames.some(name => name === editableData.name && name !== props.initialName)
+  const nameExists = props.existingNames.some(
+    (name) => name === editableData.name && name !== props.initialName
+  )
   if (nameExists) {
     ElNotification.error("A module with this name already exists.")
     return
   }
 
-  emit("confirm", { name: editableData.name, nodeId: props.nodeId })
+  const finalPortLabels = editableData.portLabels.filter(
+    p => p.option && p.label && p.label.trim()
+  )
+
+  emit("confirm", {
+    name: editableData.name,
+    nodeId: props.nodeId,
+    portLabels: finalPortLabels,
+  })
 
   closeDialog()
 }
 
 watch(
-  () => [props.initialName, props.modelValue],
-  ([newName, isVisible]) => {
-    if (isVisible) {
+  () => [props.initialName, , props.initialPortLabels, props.modelValue],
+  () => {
+    if (props.modelValue) {
       resetForm()
     }
   },
-  { immediate: true }
+  { deep: true, immediate: true }
 )
+
+const usedOptions = computed(() => {
+  return new Set(editableData.portLabels.map((p) => p.option).filter(Boolean))
+})
+
+function isOptionDisabled(optionName, currentSelection) {
+  // Disable if:
+  // 1. It's in the usedOptions Set
+  // 2. And it's NOT the option this row already has selected
+  return usedOptions.value.has(optionName) && optionName !== currentSelection
+}
+
+function addPortLabel() {
+  editableData.portLabels.push({ option: "", label: "" })
+}
+
+function deletePortLabel(index) {
+  editableData.portLabels.splice(index, 1)
+}
 </script>
 
 <style scoped>
 .el-form-item {
   margin-bottom: 15px; /* More space */
 }
-
 </style>

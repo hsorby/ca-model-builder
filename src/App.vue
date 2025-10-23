@@ -68,6 +68,8 @@
     :initial-name="currentEditingNode.name"
     :node-id="currentEditingNode.nodeId"
     :existing-names="allNodeNames"
+    :port-options="currentEditingNode?.portOptions || []"
+    :initial-port-labels="currentEditingNode?.portLabels || []"
     @confirm="onEditConfirm"
   />
 </template>
@@ -126,7 +128,7 @@ async function onEditConfirm(updatedData) {
   if (!nodeId) return
 
   // const newPortsArray = [...node.data.ports, portToAdd]
-  updateNodeData(nodeId, { name: updatedData.name })
+  updateNodeData(nodeId, updatedData)
 
   // Wait for Vue to update the DOM
   // await nextTick()

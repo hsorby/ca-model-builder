@@ -54,7 +54,7 @@
             </template>
           </el-dropdown>
 
-          <el-button size="small" circle @click="openAddPortDialog">
+          <el-button size="small" circle @click="openEditDialog">
             <el-icon><Edit /></el-icon>
           </el-button>
         </div>
@@ -121,11 +121,15 @@ const emit = defineEmits(["open-edit-dialog"])
 const id = useId()
 const moduleNode = ref(null)
 
-async function openAddPortDialog() {
+async function openEditDialog() {
+  console.log("Opening edit dialog for node:", props.id)
+  console.log("Node data:", props.data)
   emit("open-edit-dialog", {
     nodeId: props.id,
     ports: props.data.ports,
     name: props.data.name,
+    portOptions: props.data.portOptions,
+    portLabels: props.data.portLabels,
   })
 }
 
@@ -229,7 +233,7 @@ const editingName = ref("")
 const inputRef = ref(null) // This is a template ref for the input
 
 // This function is triggered by the double-click
-async function startEditing() {
+async function startEditing(event) {
   // Don't allow click-through to the flow pane
   event.stopPropagation()
 
