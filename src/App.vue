@@ -3,27 +3,57 @@
     <el-header class="app-header">
       <h3>Circulatory Autogen Model Builder</h3>
       <div class="file-uploads">
-        <el-upload
-          action="#"
-          :auto-upload="false"
-          :on-change="handleModuleFile"
-          :show-file-list="false"
-        >
-          <el-button :disabled="libcellml.status !== 'ready'" type="primary"
-            >Load Modules</el-button
+        <div class="file-io-buttons">
+          <el-upload
+            action="#"
+            :auto-upload="false"
+            :on-change="handleModuleFile"
+            :show-file-list="false"
           >
-        </el-upload>
-        <el-upload
-          action="#"
-          :auto-upload="false"
-          :on-change="handleParametersFile"
-          :show-file-list="false"
-          style="margin-left: 10px"
-        >
-          <el-button :disabled="libcellml.status !== 'ready'" type="primary"
-            >Load Parameters</el-button
+            <el-button :disabled="libcellml.status !== 'ready'" type="primary">
+              Load Modules
+            </el-button>
+          </el-upload>
+          <el-upload
+            action="#"
+            :auto-upload="false"
+            :on-change="handleParametersFile"
+            :show-file-list="false"
+            style="margin-left: 10px"
           >
-        </el-upload>
+            <el-button :disabled="libcellml.status !== 'ready'" type="primary">
+              Load Parameters
+            </el-button>
+          </el-upload>
+
+          <el-divider direction="vertical" style="margin: 0 15px" />
+
+          <el-upload
+            action="#"
+            :auto-upload="false"
+            :on-change="handleLoadWorkflow"
+            :show-file-list="false"
+            accept=".json"
+          >
+            <el-button type="success">Load Model</el-button>
+          </el-upload>
+
+          <el-button
+            type="success"
+            @click="handleSaveWorkflow"
+            style="margin-left: 10px"
+          >
+            Save Model
+          </el-button>
+
+          <el-button
+            type="info"
+            @click="handleExport"
+            style="margin-left: 10px"
+          >
+            Export Model
+          </el-button>
+        </div>
       </div>
     </el-header>
 
@@ -89,7 +119,7 @@ import ModuleNode from "./components/ModuleNode.vue"
 import useDragAndDrop from "./composables/useDnD"
 import EditModuleDialog from "./components/EditModuleDialog.vue"
 
-const { addEdges, nodes, onConnect, updateNodeData } = useVueFlow()
+const { addEdges, edges, nodes, onConnect, setViewport, updateNodeData, viewport } = useVueFlow()
 
 const { onDragOver, onDrop, onDragLeave, isDragOver } = useDragAndDrop()
 
@@ -116,7 +146,7 @@ function onOpenEditDialog(eventPayload) {
   // Store which node we're editing
   console.log("Edit dialog requested for node:", eventPayload)
   currentEditingNode.value = {
-    ...eventPayload
+    ...eventPayload,
   }
   // Open the dialog
   editDialogVisible.value = true
@@ -280,6 +310,94 @@ const handleParametersFile = (file) => {
   })
 }
 
+/**
+ * Collects all state and downloads it as a JSON file.
+ */
+function handleSaveWorkflow() {
+  const saveState = {
+    flow: {
+      nodes: nodes.value,
+      edges: edges.value,
+      viewport: viewport.value,
+    },
+    store: {
+      availableModules: store.availableModules,
+      parameterData: store.parameterData,
+    }
+  }
+// Convert the state to a JSON string
+  const jsonString = JSON.stringify(saveState, null, 2); // null, 2 for pretty-printing
+  
+  // Create a Blob
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  
+  // Create a URL for the Blob
+  const url = URL.createObjectURL(blob);
+  
+  // Create a hidden link and click it to trigger download
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'ca-model-builder.json'; // The default filename
+  link.click();
+  
+  // Clean up the URL object
+  URL.revokeObjectURL(url);
+  
+  ElNotification.success('Workflow saved!');
+}
+
+/**
+ * Reads a JSON file and restores the application state.
+ */
+function handleLoadWorkflow(file) {
+  const reader = new FileReader();
+
+  reader.onload = (e) => {
+    try {
+      const loadedState = JSON.parse(e.target.result);
+
+      // Validate the loaded file
+      if (!loadedState.flow || !loadedState.store) {
+        throw new Error('Invalid workflow file format.');
+      }
+
+      // Restore Vue Flow state
+      // We use `setViewport` to apply zoom/pan
+      setViewport(loadedState.flow.viewport);
+      // We directly set the reactive refs
+      nodes.value = loadedState.flow.nodes;
+      edges.value = loadedState.flow.edges;
+      
+      // Restore Pinia store state
+      store.availableModules = loadedState.store.availableModules;
+      store.parameterData = loadedState.store.parameterData;
+
+      ElNotification.success('Workflow loaded successfully!');
+
+    } catch (error) {
+      ElNotification.error(`Failed to load workflow: ${error.message}`);
+    }
+  };
+
+  reader.readAsText(file.raw);
+}
+
+/**
+ * Export model for circulatory autogen ingestion.
+ */
+function handleExport() {
+  console.log('Export triggered. Current state:', {
+    nodes: nodes.value,
+    edges: edges.value,
+    parameters: store.parameterData,
+  });
+
+  ElNotification.info({
+    title: 'Export (Placeholder)',
+    message: 'Export logic is not yet implemented. Check console for data.',
+  });
+}
+
 const finiteTranslateExtent = [
   [-1000, -1000],
   [1000, 1000],
@@ -401,16 +519,21 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  
+
   /* This does three things:
     1. translate(-50%, -50%): Moves the icon back by half its own size to perfectly center it.
     2. rotate(90deg): Rotates it to point left/right.
   */
   transform: translate(-53%, -50%) rotate(90deg);
-  
+
   /* Style it */
   font-size: 26px;
   color: #434344; /* Element Plus secondary text color */
   z-index: 10;
+}
+
+.file-io-buttons {
+  display: flex;
+  align-items: center;
 }
 </style>

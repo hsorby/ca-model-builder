@@ -97,9 +97,10 @@ export const useBuilderStore = defineStore("builder", () => {
   return {
     // State
     availableModules,
-    workbenchModules,
     connections,
+    parameterData,
     units,
+    workbenchModules,
 
     // Actions
     addModuleFile,
