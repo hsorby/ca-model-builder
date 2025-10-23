@@ -120,7 +120,6 @@ import { ElNotification } from "element-plus"
 import { VueFlow, useVueFlow } from "@vue-flow/core"
 import { DCaret } from "@element-plus/icons-vue"
 import { MiniMap } from "@vue-flow/minimap"
-import JSZip from "jszip"
 import Papa from "papaparse"
 
 import { useBuilderStore } from "./stores/builderStore"
@@ -130,6 +129,7 @@ import ModuleNode from "./components/ModuleNode.vue"
 import useDragAndDrop from "./composables/useDnD"
 import EditModuleDialog from "./components/EditModuleDialog.vue"
 import SaveDialog from "./components/SaveDialog.vue"
+import { generateExportZip } from "./services/caExport"
 
 const {
   addEdges,
@@ -147,6 +147,7 @@ onConnect(addEdges)
 
 import testModuleBGContent from "./assets/bg_modules.cellml?raw"
 import testModuleColonContent from "./assets/colon_FTU_modules.cellml?raw"
+import { file } from "jszip"
 const testData = {
   filename: "colon_FTU_modules.cellml",
   content: testModuleColonContent,
@@ -179,16 +180,7 @@ async function onEditConfirm(updatedData) {
   const nodeId = currentEditingNode.value.nodeId
   if (!nodeId) return
 
-  // const newPortsArray = [...node.data.ports, portToAdd]
   updateNodeData(nodeId, updatedData)
-
-  // Wait for Vue to update the DOM
-  // await nextTick()
-
-  // Tell Vue Flow to re-scan the node
-  // updateNodeInternals(nodeId)
-
-  // (Dialog closes itself via v-model)
 }
 
 function processModuleData(cellmlString) {
@@ -353,37 +345,13 @@ async function onExportConfirm(fileName) {
   })
 
   try {
-    const zip = new JSZip()
+    const zipBlob = await generateExportZip(
+      fileName,
+      nodes.value,
+      edges.value,
+      store.parameterData
+    )
 
-    // --- Generate Your Files ---
-
-    // File 1: Your custom placeholder (e.g., a JSON file)
-    // This is where your specialized export logic will go.
-    const customExportData = {
-      message: "This is the placeholder for the specialized export.",
-      nodes: nodes.value,
-      edges: edges.value,
-    }
-    const file1Content = JSON.stringify(customExportData, null, 2)
-    zip.file("model_export.json", file1Content)
-
-    // File 2: The parameters as a CSV file
-    // We use Papa Parse to "unparse" the object array back to a CSV string
-    const file2Content = Papa.unparse(store.parameterData)
-    zip.file("parameters.csv", file2Content)
-
-    // --- Generate and Download the Zip ---
-
-    // Generate the zip file as a "blob" (asynchronously)
-    const zipBlob = await zip.generateAsync({
-      type: "blob",
-      compression: "DEFLATE",
-      compressionOptions: {
-        level: 9,
-      },
-    })
-
-    // Use the same download trick as the save function
     const link = document.createElement("a")
     link.href = URL.createObjectURL(zipBlob)
     link.download = `${fileName}.zip`
