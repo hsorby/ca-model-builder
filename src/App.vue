@@ -147,7 +147,8 @@ onConnect(addEdges)
 
 import testModuleBGContent from "./assets/bg_modules.cellml?raw"
 import testModuleColonContent from "./assets/colon_FTU_modules.cellml?raw"
-import { file } from "jszip"
+import testParamertersCSV from "./assets/colon_FTU_parameters.csv?raw"
+
 const testData = {
   filename: "colon_FTU_modules.cellml",
   content: testModuleColonContent,
@@ -164,7 +165,9 @@ const currentEditingNode = ref({ nodeId: "", ports: [], name: "" })
 const asideWidth = ref(250)
 
 const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
-const exportAvailable = computed(() => nodes.value.length > 0 && store.parameterData.length > 0)
+const exportAvailable = computed(
+  () => nodes.value.length > 0 && store.parameterData.length > 0
+)
 
 function onOpenEditDialog(eventPayload) {
   // Store which node we're editing
@@ -475,6 +478,7 @@ onMounted(async () => {
   // only when running 'yarn dev'
   if (import.meta.env.DEV) {
     await libcellmlReadyPromise
+    handleParametersFile({ raw: testParamertersCSV })
     const result = processModuleData(testData.content)
     if (result.type !== "success") {
       throw new Error("Failed to process test module file.")
