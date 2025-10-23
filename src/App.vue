@@ -237,8 +237,6 @@ const handleModuleFile = (file) => {
         })
         return
       }
-      // Call the store action to set the modules
-      // store.setAvailableModules(data)
     } catch (error) {
       console.error("Error parsing module file:", error)
       ElNotification({
@@ -257,12 +255,10 @@ const handleParametersFile = (file) => {
     return
   }
 
-  // Papa Parse can parse the File object (file.raw) directly
   Papa.parse(file.raw, {
-    header: true, // <-- This is magic! Converts row 1 to object keys
-    skipEmptyLines: true, // <-- Good for cleanup
+    header: true, // Converts row 1 to object keys
+    skipEmptyLines: true,
 
-    // 3. This is called when parsing is finished
     complete: (results) => {
       // results.data will be an array of objects
       // e.g., [{ param_name: 'a', value: '1' }, { param_name: 'b', value: '2' }]
@@ -274,7 +270,6 @@ const handleParametersFile = (file) => {
       })
     },
 
-    // 4. This is called if something goes wrong
     error: (err) => {
       ElNotification.error({
         title: "CSV Parse Error",

@@ -2,7 +2,7 @@
   <el-dialog
     :model-value="modelValue"
     title="Edit Module"
-    width="300px"
+    width="500px"
     teleported
     @closed="resetForm"
     @update:model-value="closeDialog"
@@ -11,7 +11,7 @@
   >
     <el-form
       :model="editableData"
-      label-position="top"
+      label-position="left"
       @submit.prevent="handleConfirm"
     >
       <el-form-item label="Module Name">
@@ -109,4 +109,5 @@ watch(
 .el-form-item {
   margin-bottom: 15px; /* More space */
 }
+
 </style>

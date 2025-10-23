@@ -115,8 +115,14 @@ watch(
   font-size: 1.05em;
   background-color: #f9f9f9;
   border-radius: 4px;
-  padding-left: 10px;
+  padding: 0 5px;
   margin-top: 5px;
+}
+
+:deep(.el-collapse-item__arrow) {
+  /* This creates a small, 8px buffer between the
+     arrow and the title, giving it room to rotate. */
+  margin-right: 8px;
 }
 
 :deep(.el-collapse-item__wrap) {
@@ -124,7 +130,7 @@ watch(
 }
 
 :deep(.el-collapse-item__content) {
-  padding: 10px 0 0 0;
+  padding: 10px 10px 0 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
