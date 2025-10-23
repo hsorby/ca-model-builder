@@ -11,6 +11,10 @@ import Papa from 'papaparse'
 export async function generateExportZip(fileName, nodes, edges, parameters) {
   const zip = new JSZip()
 
+  console.log("Generating export zip with filename:", fileName)
+  console.log("Nodes:", nodes)
+  console.log("Edges:", edges)
+  // console.log("Parameters:", parameters)
   // --- 1. Specialized Logic ---
   // This is where you will build your custom files.
   // For example, you might loop through nodes and edges to build a graph.

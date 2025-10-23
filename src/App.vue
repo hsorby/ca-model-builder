@@ -184,7 +184,7 @@ async function onEditConfirm(updatedData) {
   updateNodeData(nodeId, updatedData)
 }
 
-function processModuleData(cellmlString) {
+function processModuleData(cellmlString, fileName) {
   let parser = new libcellml.library.Parser(false)
   let printer = new libcellml.library.Printer()
   let model = null
@@ -243,7 +243,8 @@ function processModuleData(cellmlString) {
       name: comp.name(),
       portOptions: options,
       ports: [],
-      // Add other properties as needed
+      componentName: comp.name(),
+      sourceFile: fileName,
     })
     comp.delete()
   }
@@ -259,7 +260,7 @@ const handleModuleFile = (file) => {
   reader.onload = (e) => {
     try {
       try {
-        const result = processModuleData(e.target.result)
+        const result = processModuleData(e.target.result, filename)
         if (result.type !== "success") {
           if (result.issues) {
             ElNotification({
@@ -314,6 +315,7 @@ const handleParametersFile = (file) => {
       ElNotification.success({
         title: "Parameters Loaded",
         message: `Loaded ${results.data.length} parameters from ${file.name}.`,
+        offset: 50,
       })
     },
 
@@ -353,15 +355,16 @@ async function onExportConfirm(fileName) {
       store.parameterData
     )
 
-    const link = document.createElement("a")
-    link.href = URL.createObjectURL(zipBlob)
-    link.download = `${fileName}.zip`
-    link.click()
+    if (!import.meta.env.DEV) {
+      const link = document.createElement("a")
+      link.href = URL.createObjectURL(zipBlob)
+      link.download = `${fileName}.zip`
+      link.click()
 
-    URL.revokeObjectURL(link.href)
-
+      URL.revokeObjectURL(link.href)
+    }
     notification.close()
-    ElNotification.success("Export successful!")
+    ElNotification.success({message: "Export successful!", offset: 50 });
   } catch (error) {
     notification.close()
     ElNotification.error(`Export failed: ${error.message}`)
@@ -399,7 +402,7 @@ function onSaveConfirm(fileName) {
 
   URL.revokeObjectURL(url)
 
-  ElNotification.success("Workflow saved!")
+  ElNotification.success({message: "Workflow saved!", offset: 50 });
 }
 
 /**
@@ -428,7 +431,7 @@ function handleLoadWorkflow(file) {
       store.availableModules = loadedState.store.availableModules
       store.parameterData = loadedState.store.parameterData
 
-      ElNotification.success("Workflow loaded successfully!")
+      ElNotification.success({message: "Workflow loaded successfully!", offset: 50 });
     } catch (error) {
       ElNotification.error(`Failed to load workflow: ${error.message}`)
     }
@@ -477,7 +480,7 @@ onMounted(async () => {
   if (import.meta.env.DEV) {
     await libcellmlReadyPromise
     handleParametersFile({ raw: testParamertersCSV })
-    const result = processModuleData(testData.content)
+    const result = processModuleData(testData.content, testData.filename)
     if (result.type !== "success") {
       throw new Error("Failed to process test module file.")
     } else {
