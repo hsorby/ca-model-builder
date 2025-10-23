@@ -355,7 +355,7 @@ async function onExportConfirm(fileName) {
       store.parameterData
     )
 
-    if (!import.meta.env.DEV) {
+    if (!import.meta.env.DEVOFF) {
       const link = document.createElement("a")
       link.href = URL.createObjectURL(zipBlob)
       link.download = `${fileName}.zip`
