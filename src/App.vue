@@ -106,11 +106,16 @@
     @confirm="onEditConfirm"
   />
 
-  <SaveDialog v-model="saveDialogVisible" @confirm="onSaveConfirm" />
+  <SaveDialog
+    v-model="saveDialogVisible"
+    @confirm="onSaveConfirm"
+    :default-name="store.lastSaveName"
+  />
   <SaveDialog
     v-model="exportDialogVisible"
     @confirm="onExportConfirm"
     title="Export for Circulatory Autogen"
+    :default-name="store.lastExportName"
     suffix=".zip"
   />
 </template>
@@ -381,6 +386,7 @@ async function onExportConfirm(fileName) {
 
       URL.revokeObjectURL(link.href)
     }
+    store.setLastExportName(fileName)
     notification.close()
     ElNotification.success({ message: "Export successful!", offset: 50 })
   } catch (error) {
@@ -420,6 +426,7 @@ function onSaveConfirm(fileName) {
 
   URL.revokeObjectURL(url)
 
+  store.setLastSaveName(fileName)
   ElNotification.success({ message: "Workflow saved!", offset: 50 })
 }
 

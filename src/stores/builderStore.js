@@ -8,6 +8,8 @@ export const useBuilderStore = defineStore("builder", () => {
   // Holds the *definitions* loaded from your file
   const availableModules = ref([])
   const parameterData = ref([])
+  const lastSaveName = ref('ca-model-builder')
+  const lastExportName = ref('ca-model-builder')
 
   // Holds the *instances* of modules placed on the workbench
   // We'll add x/y coordinates and a unique ID
@@ -35,6 +37,14 @@ export const useBuilderStore = defineStore("builder", () => {
    */
   function setParameterData(data) {
     parameterData.value = data
+  }
+
+  function setLastSaveName(name) {
+    lastSaveName.value = name
+  }
+
+  function setLastExportName(name) {
+    lastExportName.value = name
   }
 
   /**
@@ -98,6 +108,8 @@ export const useBuilderStore = defineStore("builder", () => {
     // State
     availableModules,
     connections,
+    lastExportName,
+    lastSaveName,
     parameterData,
     units,
     workbenchModules,
@@ -107,6 +119,8 @@ export const useBuilderStore = defineStore("builder", () => {
     addModuleToWorkbench,
     moveModule,
     setAvailableModules,
+    setLastExportName,
+    setLastSaveName,
     setParameterData,
   }
 })
