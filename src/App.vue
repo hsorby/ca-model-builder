@@ -170,8 +170,6 @@ const exportAvailable = computed(
 )
 
 function onOpenEditDialog(eventPayload) {
-  // Store which node we're editing
-  console.log("Edit dialog requested for node:", eventPayload)
   currentEditingNode.value = {
     ...eventPayload,
   }

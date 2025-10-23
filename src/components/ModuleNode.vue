@@ -122,8 +122,6 @@ const id = useId()
 const moduleNode = ref(null)
 
 async function openEditDialog() {
-  console.log("Opening edit dialog for node:", props.id)
-  console.log("Node data:", props.data)
   emit("open-edit-dialog", {
     nodeId: props.id,
     ports: props.data.ports,
