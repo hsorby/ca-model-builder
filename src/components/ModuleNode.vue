@@ -32,7 +32,7 @@
                 <el-dropdown-item command="compartment"
                   >Compartment</el-dropdown-item
                 >
-                <el-dropdown-item command="species">Species</el-dropdown-item>
+                <el-dropdown-item command="protein">Protein</el-dropdown-item>
                 <el-dropdown-item command="undefined" divided
                   >Reset to Default</el-dropdown-item
                 >
@@ -340,7 +340,7 @@ function saveEdit() {
   background-color: #e1edff;
 }
 
-.domain-type-species.el-card {
+.domain-type-protein.el-card {
   background-color: #d1fff0;
 }
 </style>
