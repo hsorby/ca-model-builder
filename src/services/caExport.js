@@ -95,7 +95,7 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
       generalPorts.push({
         port_type: info.label,
         variables: info.option || [],
-        multi_port: true, // Placeholder, figure out actual logic if needed.
+        multi_port: "True", // Placeholder, figure out actual logic if needed.
       })
     }
     let variablesAndUnits = []
