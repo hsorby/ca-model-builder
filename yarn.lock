@@ -950,10 +950,10 @@ vue-demi@*, vue-demi@>=0.14.8:
   resolved "https://registry.yarnpkg.com/vue-demi/-/vue-demi-0.14.10.tgz#afc78de3d6f9e11bf78c55e8510ee12814522f04"
   integrity sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==
 
-vue3-libcellml.js@^0.3.0:
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/vue3-libcellml.js/-/vue3-libcellml.js-0.3.0.tgz#4a704eb6de45e993fb8b346cda8799b8b460de43"
-  integrity sha512-vm7/MWL59vi5YwJkOevBJyr+X5fac54nxwC78Rmql7jk7sRGnifgl6+4a615GAu5TRL+PK9Ia/CWZ/KsRyaaOg==
+vue3-libcellml.js@^0.5.1:
+  version "0.5.1"
+  resolved "https://registry.yarnpkg.com/vue3-libcellml.js/-/vue3-libcellml.js-0.5.1.tgz#e596a6306aea6d545dd0fa2a9c83e35306dce6e4"
+  integrity sha512-ARjmAkKx9Ir7ADRzn0+asnVBs35YYnR/IfIzlQV4Y7CEwgcjSmfWnVTouQHeBqnxQjUy84EZsGCGQlbeqHLvag==
   dependencies:
     core-js "^3.38.1"
     libcellml.js "^0.6.2"
