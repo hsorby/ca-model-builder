@@ -1,6 +1,6 @@
 {
   "name": "ca-system-builder",
-  "description": "A Circulatory Autogen System Builder application.",
+  "description": "A Circulatory Autogen system builder application.",
   "author": {
     "name": "Hugh Sorby",
     "email": "h.sorby@auckland.ac.nz"
@@ -12,8 +12,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "pack:electron": "vite build && electron-builder --dir",
-    "build:electron": "vite build && electron-builder",
+    "app:dev": "vite --config vite.electron.config.js",
+    "app:pack": "vite build --config vite.electron.config.js && electron-builder --dir",
+    "app:build": "vite build --config vite.electron.config.js && electron-builder",
     "preview": "vite preview"
   },
   "build": {
