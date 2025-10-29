@@ -57,7 +57,28 @@ function createWindow() {
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    // We only want to apply this CSP in production
+    if (app.isPackaged) {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          // This is a strong, browser-like CSP
+          'Content-Security-Policy': [
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;",
+          ],
+        },
+      })
+    } else {
+      // In development, we don't apply any CSP.
+      // Vite's dev server will work as expected.
+      callback({ responseHeaders: details.responseHeaders })
+    }
+  })
+  
+  createWindow()
+})
 
 // Quit when all windows are closed, except on macOS
 app.on("window-all-closed", () => {
