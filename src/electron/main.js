@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron"
+import { app, BrowserWindow, session } from "electron"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -16,6 +16,32 @@ function createWindow() {
       // If you're using a preload script, specify it here
       // preload: path.join(__dirname, 'preload.js'),
     },
+  })
+
+  session.defaultSession.on("will-download", (event, item, webContents) => {
+    // Get the filename from the <a> link's 'download' attribute
+    const fileName = item.getFilename()
+
+    // Get the user's "Downloads" folder path
+    const downloadsPath = app.getPath("downloads")
+
+    // Construct the full save path
+    const savePath = path.join(downloadsPath, fileName)
+
+    // Tell Electron to save the file to this path
+    // This stops the "Save As" dialog from appearing
+    item.setSavePath(savePath)
+
+    // (Optional but recommended) Log the download status
+    item.on("done", (e, state) => {
+      if (state === "completed") {
+        console.log(`Download completed: ${savePath}`)
+        // You could even send a message back to your Vue app
+        // webContents.send('download-complete', savePath);
+      } else {
+        console.error(`Download failed: ${state}`)
+      }
+    })
   })
 
   if (VITE_DEV_SERVER_URL) {
