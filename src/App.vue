@@ -121,7 +121,7 @@
 </template>
 
 <script setup>
-import { computed, inject, onMounted, ref } from "vue"
+import { computed, inject, nextTick, onMounted, ref } from "vue"
 import { ElNotification } from "element-plus"
 import { MarkerType, useVueFlow, VueFlow } from "@vue-flow/core"
 import { DCaret } from "@element-plus/icons-vue"
@@ -140,9 +140,11 @@ import { generateExportZip } from "./services/caExport"
 const {
   addEdges,
   edges,
+  fromObject,
   nodes,
   onConnect,
   setViewport,
+  toObject,
   updateNodeData,
   viewport,
 } = useVueFlow()
@@ -254,7 +256,9 @@ function processModuleData(cellmlString, fileName) {
     let options = []
     for (let j = 0; j < comp.variableCount(); j++) {
       let varr = comp.variableByIndex(j)
-      if (varr.hasInterfaceType(libcellml.library.Variable.InterfaceType.PUBLIC)) {
+      if (
+        varr.hasInterfaceType(libcellml.library.Variable.InterfaceType.PUBLIC)
+      ) {
         let units = varr.units()
         options.push({
           name: varr.name(),
@@ -404,13 +408,13 @@ function onSaveConfirm(fileName) {
   // Ensure the filename ends with .json
   const finalName = fileName.endsWith(".json") ? fileName : `${fileName}.json`
 
-  // (This is your old logic, moved here)
   const saveState = {
-    flow: {
-      nodes: nodes.value,
-      edges: edges.value,
-      viewport: viewport.value,
-    },
+    flow: toObject(),
+    // flow: {
+    //   nodes: nodes.value,
+    //   edges: edges.value,
+    //   viewport: viewport.value,
+    // },
     store: {
       availableModules: store.availableModules,
       parameterData: store.parameterData,
@@ -423,7 +427,7 @@ function onSaveConfirm(fileName) {
 
   const link = document.createElement("a")
   link.href = url
-  link.download = finalName // Use the user's chosen name
+  link.download = finalName
   link.click()
 
   URL.revokeObjectURL(url)
@@ -432,13 +436,29 @@ function onSaveConfirm(fileName) {
   ElNotification.success({ message: "Workflow saved!", offset: 50 })
 }
 
+function mergeModules(newModules) {
+  const moduleMap = new Map(
+    store.availableModules.map((mod) => [mod.filename, mod])
+  )
+
+  if (newModules) {
+    for (const newModule of newModules) {
+      if (newModule && newModule.filename) {
+        // Safety check
+        moduleMap.set(newModule.filename, newModule)
+      }
+    }
+  }
+
+  store.availableModules = Array.from(moduleMap.values())
+}
 /**
  * Reads a JSON file and restores the application state.
  */
 function handleLoadWorkflow(file) {
   const reader = new FileReader()
 
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     try {
       const loadedState = JSON.parse(e.target.result)
 
@@ -447,16 +467,27 @@ function handleLoadWorkflow(file) {
         throw new Error("Invalid workflow file format.")
       }
 
-      // Restore Vue Flow state
-      // We use `setViewport` to apply zoom/pan
-      setViewport(loadedState.flow.viewport)
-      // We directly set the reactive refs
-      nodes.value = loadedState.flow.nodes
-      edges.value = loadedState.flow.edges
+      // Clear the current Vue Flow state.
+      nodes.value = []
+      edges.value = []
+      setViewport({ x: 0, y: 0, zoom: 1 }) // Reset viewport.
+      // Clear the current parameter data.
+      store.parameterData = []
 
-      // Restore Pinia store state
-      store.availableModules = loadedState.store.availableModules
+      await nextTick()
+
+      // Restore Vue Flow state.
+      // We use `setViewport` to apply zoom/pan.
+      setViewport(loadedState.flow.viewport)
+      // We directly set the reactive refs.
+      fromObject(loadedState.flow)
+      // nodes.value = loadedState.flow.nodes
+      // edges.value = loadedState.flow.edges
+
+      // Restore Pinia store state.
       store.parameterData = loadedState.store.parameterData
+      // Merge available modules.
+      mergeModules(loadedState.store.availableModules)
 
       ElNotification.success({
         message: "Workflow loaded successfully!",
