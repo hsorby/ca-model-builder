@@ -58,8 +58,10 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
   const zip = new JSZip()
 
   const nodeNameMap = new Map()
+  const nodeNameObjMap = new Map()
   for (const node of nodes) {
     nodeNameMap.set(node.id, node.data.name)
+    nodeNameObjMap.set(node.data.name, node)
   }
 
   let module_config = []
@@ -90,6 +92,10 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
       }
     }
 
+    const sourceNodeObjects = inp_vessels
+      .map((name) => nodeNameObjMap.get(name))
+      .filter(Boolean) // Filter out any undefined/missing nodes
+
     let generalPorts = []
     for (const info of node.data.portLabels || []) {
       generalPorts.push({
@@ -100,13 +106,36 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
     }
     let variablesAndUnits = []
     for (const variable of node.data.portOptions || []) {
-      variablesAndUnits.push([
-        variable.name,
-        variable.units || "missing",
-        "access",
-        classifyVariable(variable, parameters),
-      ])
+      const currentPortLabel = info.label
+
+      // Count how many *input nodes* have this *same port label*
+      let portLabelCountOnInputs = 0
+      for (const sourceNode of sourceNodeObjects) {
+        // Check if the source node has *at least one* port with the same label
+        const hasLabel = (sourceNode.data.portLabels || []).some(
+          (pl) => pl.label === currentPortLabel,
+        )
+        if (hasLabel) {
+          portLabelCountOnInputs++
+        }
+      }
+
+      // Check the multi_port condition
+      const isMultiPort = portLabelCountOnInputs > 1
+
+      // Create the port entry
+      const portEntry = {
+        port_type: currentPortLabel,
+        variables: [info.option] || [],
+      }
+
+      if (isMultiPort) {
+        portEntry.multi_port = "True"
+      }
+
+      generalPorts.push(portEntry)
     }
+    
     module_config.push({
       vessel_type: node.data.name,
       BC_type: BC_type,
