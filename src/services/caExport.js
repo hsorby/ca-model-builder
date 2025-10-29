@@ -6,48 +6,34 @@ import Papa from "papaparse"
  * Assumes 'parameters' is an array of objects, where each object has a 'name' property
  * representing the parameter name (e.g., [{ name: 'param_a' }, { name: 'param_b' }]).
  *
- * @param {object} variable - The variable object (e.g., { name: 'my_var_suffix' })
+ * @param {string} moduleName - The name the variable comes from.
+ * @param {object} variable - The variable object (e.g., { name: 'q_V' })
  * @param {Array<object>} parameters - List of parameter objects.
  * @returns {string} - 'global_constant', 'constant', or 'variable'
  */
-function classifyVariable(variable, parameters) {
+function classifyVariable(moduleName, variable, parameters) {
   const varName = variable.name
 
   if (!varName || !Array.isArray(parameters)) {
     console.error("Invalid input to classifyVariable")
-    return "variable" // Default or error state
+    return "undefined" // Default or error state
   }
-
-  let isConstant = false // Flag to check if we found a prefix match
 
   for (const param of parameters) {
     const paramName = param.variable_name
 
-    // 1. Check for an exact match first
+    // Check for an exact match first.
     if (varName === paramName) {
       return "global_constant" // Found exact match, classification is done.
     }
 
-    // 2. Check if the parameter name is a prefix of the variable name
-    //    AND the variable name is longer (meaning it has a suffix)
-    if (
-      paramName.startsWith(varName) &&
-      paramName.length > varName.length &&
-      !paramName.startsWith(`${varName}_init`)
-    ) {
-      // We found a potential prefix match. We set the flag but continue checking
-      // other parameters in case a later one is an *exact* match.
-      isConstant = true
+    // Check for a compound match.
+    if (`${varName}_${moduleName}` === paramName) {
+      return "constant"
     }
   }
 
-  // 3. After checking all parameters:
-  //    If we found a prefix match (and didn't return 'global_constant' earlier)
-  if (isConstant) {
-    return "constant"
-  }
-
-  // 4. If neither exact nor prefix match was found after checking all parameters
+  // Neither a globl constant of constant found after checking all parameters.
   return "variable"
 }
 
@@ -137,7 +123,7 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
         variable.name,
         variable.units || "missing",
         "access",
-        classifyVariable(variable, parameters),
+        classifyVariable(node.data.name, variable, parameters),
       ])
     }
 
