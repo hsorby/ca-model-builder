@@ -30,7 +30,7 @@ function classifyVariable(variable, parameters) {
 
     // 2. Check if the parameter name is a prefix of the variable name
     //    AND the variable name is longer (meaning it has a suffix)
-    if (paramName.startsWith(varName) && paramName.length > varName.length) {
+    if (paramName.startsWith(varName) && paramName.length > varName.length && !paramName.startsWith(`${varName}_init`)) {
       // We found a potential prefix match. We set the flag but continue checking
       // other parameters in case a later one is an *exact* match.
       isConstant = true
