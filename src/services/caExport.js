@@ -30,7 +30,11 @@ function classifyVariable(variable, parameters) {
 
     // 2. Check if the parameter name is a prefix of the variable name
     //    AND the variable name is longer (meaning it has a suffix)
-    if (paramName.startsWith(varName) && paramName.length > varName.length && !paramName.startsWith(`${varName}_init`)) {
+    if (
+      paramName.startsWith(varName) &&
+      paramName.length > varName.length &&
+      !paramName.startsWith(`${varName}_init`)
+    ) {
       // We found a potential prefix match. We set the flag but continue checking
       // other parameters in case a later one is an *exact* match.
       isConstant = true
@@ -98,14 +102,6 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
 
     let generalPorts = []
     for (const info of node.data.portLabels || []) {
-      generalPorts.push({
-        port_type: info.label,
-        variables: [info.option] || [],
-        multi_port: "True", // Placeholder, figure out actual logic if needed.
-      })
-    }
-    let variablesAndUnits = []
-    for (const variable of node.data.portOptions || []) {
       const currentPortLabel = info.label
 
       // Count how many *input nodes* have this *same port label*
@@ -113,7 +109,7 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
       for (const sourceNode of sourceNodeObjects) {
         // Check if the source node has *at least one* port with the same label
         const hasLabel = (sourceNode.data.portLabels || []).some(
-          (pl) => pl.label === currentPortLabel,
+          (pl) => pl.label === currentPortLabel
         )
         if (hasLabel) {
           portLabelCountOnInputs++
@@ -135,7 +131,16 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
 
       generalPorts.push(portEntry)
     }
-    
+    let variablesAndUnits = []
+    for (const variable of node.data.portOptions || []) {
+      variablesAndUnits.push([
+        variable.name,
+        variable.units || "missing",
+        "access",
+        classifyVariable(variable, parameters),
+      ])
+    }
+
     module_config.push({
       vessel_type: node.data.name,
       BC_type: BC_type,
