@@ -1,12 +1,32 @@
 {
   "name": "ca-system-builder",
+  "description": "A Circulatory Autogen System Builder application.",
+  "author": {
+    "name": "Hugh Sorby",
+    "email": "h.sorby@auckland.ac.nz"
+  },
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "src/electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "pack:electron": "vite build && electron-builder --dir",
+    "build:electron": "vite build && electron-builder",
     "preview": "vite preview"
+  },
+  "build": {
+    "appId": "nz.ac.auckland.circulatory-autogen.ca-system-builder",
+    "productName": "CA System Builder",
+    "files": [
+      "dist-electron/**/*",
+      "dist/**/*",
+      "src/electron/main.js"
+    ],
+    "directories": {
+      "output": "dist-applications"
+    }
   },
   "dependencies": {
     "@vue-flow/background": "^1.3.2",
@@ -22,6 +42,9 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",
-    "vite": "^7.1.7"
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12",
+    "vite": "^7.1.7",
+    "vite-plugin-electron": "^0.29.0"
   }
 }
