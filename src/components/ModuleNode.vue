@@ -9,7 +9,7 @@
 
     <el-card :class="[domainTypeClass, 'module-card']" shadow="hover">
       <div class="module-name" @dblclick="startEditing">
-        <span v-if="!isEditing" class="module-name">
+        <span v-if="!isEditing">
           {{ data.name }}
         </span>
         <el-input
@@ -20,46 +20,46 @@
           @blur="saveEdit"
           @keyup.enter="saveEdit"
         />
-        <!-- non-editable label showing CellML component and source file (no white box) -->
-        <div v-if="data.label" class="module-label">{{ data.label }}</div>
-        <div class="button-group">
-          <el-dropdown trigger="click" @command="handleSetDomainType">
-            <el-button size="small" circle>
-              <el-icon><Key /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="membrane">Membrane</el-dropdown-item>
-                <el-dropdown-item command="process">Process</el-dropdown-item>
-                <el-dropdown-item command="compartment"
-                  >Compartment</el-dropdown-item
-                >
-                <el-dropdown-item command="protein">Protein</el-dropdown-item>
-                <el-dropdown-item command="undefined" divided
-                  >Reset to Default</el-dropdown-item
-                >
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-
-          <el-dropdown trigger="click" @command="addPort({ type: $event })">
-            <el-button size="small" circle>
-              <el-icon><Place /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="left">Left</el-dropdown-item>
-                <el-dropdown-item command="right">Right</el-dropdown-item>
-                <el-dropdown-item command="top">Top</el-dropdown-item>
-                <el-dropdown-item command="bottom">Bottom</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-
-          <el-button size="small" circle @click="openEditDialog">
-            <el-icon><Edit /></el-icon>
+      </div>
+      <!-- non-editable label showing CellML component and source file (no white box) -->
+      <div v-if="data.label" class="module-label">{{ data.label }}</div>
+      <div class="button-group">
+        <el-dropdown trigger="click" @command="handleSetDomainType">
+          <el-button size="small" circle class="module-button">
+            <el-icon><Key /></el-icon>
           </el-button>
-        </div>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="membrane">Membrane</el-dropdown-item>
+              <el-dropdown-item command="process">Process</el-dropdown-item>
+              <el-dropdown-item command="compartment"
+                >Compartment</el-dropdown-item
+              >
+              <el-dropdown-item command="protein">Protein</el-dropdown-item>
+              <el-dropdown-item command="undefined" divided
+                >Reset to Default</el-dropdown-item
+              >
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+
+        <el-dropdown trigger="click" @command="addPort({ type: $event })">
+          <el-button size="small" circle class="module-button">
+            <el-icon><Place /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="left">Left</el-dropdown-item>
+              <el-dropdown-item command="right">Right</el-dropdown-item>
+              <el-dropdown-item command="top">Top</el-dropdown-item>
+              <el-dropdown-item command="bottom">Bottom</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+
+        <el-button size="small" circle @click="openEditDialog" class="module-button">
+          <el-icon><Edit /></el-icon>
+        </el-button>
       </div>
     </el-card>
 
@@ -289,12 +289,22 @@ function saveEdit() {
 
 .module-name {
   pointer-events: none;
+  font-weight: bold;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  cursor: pointer;
+  margin-bottom: 4px;
 }
 
-.module-name span,
-:deep(.module-name .el-input),
-.button-group {
+div.module-name,
+.module-button {
   pointer-events: auto;
+}
+
+.button-group {
+  padding-top: 4px;
+  display: flex;
+  gap: 10px;
 }
 
 .title {
@@ -312,22 +322,19 @@ function saveEdit() {
   margin-bottom: 10px;
 }
 
-.module-name {
-  font-weight: bold;
-}
-  
 .module-label {
-  margin-top: 4px;
+  margin-bottom: 4px;
   font-size: 11px;
   color: #6b7280;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  user-select: none; 
+  user-select: none;
 }
 
-/* This is still needed from the last step to ensure
-  the handle is *above* the card's content, not just unclipped.
+/* 
+  This is needed to ensure the handle is 
+  *above* the card's content, not just unclipped.
 */
 :deep(.vue-flow__handle) {
   width: 10px;
