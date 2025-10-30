@@ -314,6 +314,8 @@ function saveEdit() {
 
 .module-name {
   font-weight: bold;
+}
+  
 .module-label {
   margin-top: 4px;
   font-size: 11px;
