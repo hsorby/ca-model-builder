@@ -311,6 +311,9 @@ function saveEdit() {
 
 .module-name {
   font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* This is still needed from the last step to ensure
