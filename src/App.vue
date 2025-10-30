@@ -75,7 +75,7 @@
             @dragleave="onDragLeave"
             :translate-extent="finiteTranslateExtent"
             :max-zoom="1.5"
-            :min-zoom="0.8"
+            :min-zoom="0.3"
             :connection-line-options="connectionLineOptions"
           >
             <MiniMap />
@@ -502,8 +502,8 @@ function handleLoadWorkflow(file) {
 }
 
 const finiteTranslateExtent = [
-  [-1000, -1000],
-  [1000, 1000],
+  [-2000, -2000],
+  [2000, 2000],
 ]
 
 const onResizing = (event) => {
