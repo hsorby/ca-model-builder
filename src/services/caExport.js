@@ -82,7 +82,8 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
       }
     }
 
-    const sourceNodeObjects = inp_vessels
+    const allConnectedVesselNames = new Set([...inp_vessels, ...out_vessels])
+    const connectedNodeObjects = Array.from(allConnectedVesselNames)
       .map((name) => nodeNameObjMap.get(name))
       .filter(Boolean) // Filter out any undefined/missing nodes
 
@@ -90,20 +91,20 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
     for (const info of node.data.portLabels || []) {
       const currentPortLabel = info.label
 
-      // Count how many *input nodes* have this *same port label*
-      let portLabelCountOnInputs = 0
-      for (const sourceNode of sourceNodeObjects) {
+      // Count how many *connected nodes* have this *same port label*
+      let portLabelCountOnConnectedNodes = 0
+      for (const connectedNode of connectedNodeObjects) {
         // Check if the source node has *at least one* port with the same label
-        const hasLabel = (sourceNode.data.portLabels || []).some(
-          (pl) => pl.label === currentPortLabel
+        const hasLabel = (connectedNode.data.portLabels || []).some(
+          (pl) => pl.label === currentPortLabel,
         )
         if (hasLabel) {
-          portLabelCountOnInputs++
+          portLabelCountOnConnectedNodes++
         }
       }
 
       // Check the multi_port condition
-      const isMultiPort = portLabelCountOnInputs > 1
+      const isMultiPort = portLabelCountOnConnectedNodes > 1
 
       // Create the port entry
       const portEntry = {
