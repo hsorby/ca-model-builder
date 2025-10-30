@@ -20,6 +20,8 @@
           @blur="saveEdit"
           @keyup.enter="saveEdit"
         />
+        <!-- non-editable label showing CellML component and source file (no white box) -->
+        <div v-if="data.label" class="module-label">{{ data.label }}</div>
         <div class="button-group">
           <el-dropdown trigger="click" @command="handleSetDomainType">
             <el-button size="small" circle>
@@ -268,6 +270,7 @@ function saveEdit() {
   width: 100%;
   height: 100%;
 }
+
 .module-node.selected {
   /* Use the Element Plus primary color for the border */
   border-color: #409eff;
@@ -311,6 +314,14 @@ function saveEdit() {
 
 .module-name {
   font-weight: bold;
+.module-label {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none; 
 }
 
 /* This is still needed from the last step to ensure

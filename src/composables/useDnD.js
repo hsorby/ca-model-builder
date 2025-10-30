@@ -116,6 +116,11 @@ export default function useDragAndDrop() {
       counter++
     }
 
+    // Build a non-editable label that reflects the component and CellML source file.
+    const compLabel = moduleData.componentName 
+    const filePart = moduleData.sourceFile 
+    const label = filePart ? `${compLabel} — ${filePart}` : compLabel
+
     const newNode = {
       id: nodeId,
       type: "moduleNode",
@@ -123,6 +128,7 @@ export default function useDragAndDrop() {
       data: {
         ...JSON.parse(JSON.stringify(moduleData)), // Keep deep copy
         name: finalName, // Use the new unique name
+        label,
       },
     }
 
