@@ -3,19 +3,19 @@ Generate CA Build Files
 
 Introduction
 --------------
-`Circulatory Autogen <https://github.com/FinbarArgus/circulatory_autogen/tree/master>`_ is a software package for coupling CellML modules and facilitating model calibration, parameter identifiability, and sensitivty analysis. When generating coupled models using Circulatory Autogen, users need to provide two key configuration files:
+`Circulatory Autogen <https://github.com/FinbarArgus/circulatory_autogen/tree/master>`_ is a software package for coupling CellML modules and facilitating model calibration, parameter identifiability, and sensitivity analysis. When generating coupled models using Circulatory Autogen, users need to provide two key configuration files:
+
 * vessel_array.csv: A CSV file defining the relationships between modules with shared parameters.
 * module_config.json: A JSON file defining parameters and ports with CellML modules.
 
 Circulatory Autogen Model Builder (CAMB) has been designed to simplify the process of creating these configuration files by providing a visual interface. 
 
-The purpose of this tutorial is to familiarise users with the :ref:`user interface <_user-interface>` and provide :ref:`step-by-step instructions <_instructions>` for how to use the tool to generate Circulatory Autogen configuration files for a simple example. 
+The purpose of this tutorial is to familiarise users with the `user interface`_ and provide step-by-step `instructions`_ for how to use the tool to generate Circulatory Autogen configuration files for a simple example. 
 
-.. admonition:: \ \ 
-    
+.. note:: 
     As things stand, CAMB uses general ports only. Support for more complex port types will be added in the future. 
 
-.. _user-interface:
+.. _user interface:
 
 User Interface
 ----------------
