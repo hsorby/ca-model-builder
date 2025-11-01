@@ -113,7 +113,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, useId, onBeforeUnmount } from "vue"
+import { computed, nextTick, ref, useId, onBeforeUnmount, onMounted } from "vue"
 import { Handle, Position, useVueFlow } from "@vue-flow/core"
 import { NodeResizer } from "@vue-flow/node-resizer"
 import { Delete, Edit, Key, Place, Plus } from "@element-plus/icons-vue"
@@ -280,13 +280,40 @@ const contextMenuVisible = ref(false)
 const contextMenuX = ref(0)
 const contextMenuY = ref(0)
 
-function closeContextMenu() {
-  contextMenuVisible.value = false
-  document.removeEventListener("click", closeContextMenu)
+const moduleListClickEl = ref(null)
+
+function onDocumentPointerDown(event) {
+  // If the pointer down is inside the context menu, do nothing
+  const path = event.composedPath ? event.composedPath() : (event.path || [])
+  const cm = document.querySelector(".context-menu")
+  if (cm && path.includes(cm)) return
+  closeContextMenu()
 }
 
+function removeMenuOpenListeners() {
+  document.removeEventListener("click", closeContextMenu)   
+  document.removeEventListener("pointerdown", onDocumentPointerDown, true)
+  document.removeEventListener("dragstart", closeContextMenu)
+ if (moduleListClickEl.value) {
+    moduleListClickEl.value.removeEventListener("click", closeContextMenu)
+    moduleListClickEl.value = null
+  }
+}
+
+function closeContextMenu() {
+  contextMenuVisible.value = false
+  removeMenuOpenListeners()
+}
+
+onMounted(() => {
+  document.addEventListener("module-context-open", handleExternalContextOpen)
+  document.addEventListener("contextmenu", handleDocumentContextmenu)
+})
+
 onBeforeUnmount(() => {
-  document.removeEventListener("click", closeContextMenu)
+  document.removeEventListener("module-context-open", handleExternalContextOpen)
+  document.removeEventListener("contextmenu", handleDocumentContextmenu)
+  removeMenuOpenListeners()
 })
 
 function openContextMenu(event) {
@@ -307,7 +334,21 @@ function openContextMenu(event) {
   contextMenuX.value = x
   contextMenuY.value = y
   contextMenuVisible.value = true
+
+  // close when clicking elsewhere and pointer down/drag start
   document.addEventListener("click", closeContextMenu)
+  document.addEventListener("pointerdown", onDocumentPointerDown, true)
+  document.addEventListener("dragstart", closeContextMenu)
+
+    // if the module list exists, also attach a direct click listener so clicks there close the menu
+  const ml = document.querySelector(".module-list-container")
+  if (ml) {
+    ml.addEventListener("click", closeContextMenu)
+    moduleListClickEl.value = ml
+  }
+
+  // announce to any listeners that the context menu has opened
+  document.dispatchEvent(new CustomEvent("module-context-open", { detail: { nodeId: props.id } }))
 }
 
 function requestReplace(mode) {
@@ -362,6 +403,23 @@ async function applyReplacement(newModule, options = { retainMatches: false }) {
   emit("module-replaced", { nodeId: props.id, newModule, retained: retain })
 }
 
+// Close when another module opens a context menu or when right-click happens outside this node
+function handleExternalContextOpen(e) {
+  const openId = e?.detail?.nodeId ?? null
+  if (openId !== props.id) {
+    closeContextMenu()
+  }
+}
+
+function handleDocumentContextmenu(e) {
+  // If the right-click target is not inside this module node, close the menu.
+  if (!moduleNode.value) return
+  const path = e.composedPath ? e.composedPath() : (e.path || [])
+  if (!path.includes(moduleNode.value)) {
+    closeContextMenu()
+  }
+}
+
 defineExpose({ applyReplacement, compareCompatibility })
 
 </script>
@@ -386,7 +444,7 @@ defineExpose({ applyReplacement, compareCompatibility })
 }
 
 .module-card {
-  pointer-events: none;
+  pointer-events: auto;
   width: 100%;
   height: 100%;
   display: flex;
