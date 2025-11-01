@@ -4,6 +4,7 @@
     :id="id"
     ref="moduleNode"
     :class="{ selected: selected }"
+    @contextmenu.stop.prevent="openContextMenu"
   >
     <NodeResizer min-width="180" min-height="75" :is-visible="selected" />
 
@@ -22,7 +23,10 @@
         />
       </div>
       <!-- non-editable label showing CellML component and source file (no white box) -->
-      <div v-if="data.label" class="module-label">{{ data.label }}</div>
+      <div 
+        v-if="data.label"
+        class="module-label">{{ data.label }}
+      </div>
       <div class="button-group">
         <el-dropdown trigger="click" @command="handleSetDomainType">
           <el-button size="small" circle class="module-button">
@@ -92,11 +96,24 @@
         </template>
       </el-tooltip>
     </template>
-  </div>
+      <!-- context menu -->
+      <teleport to="body">
+        <div 
+          v-if="contextMenuVisible"
+          class="context-menu"
+          :style="{ top: contextMenuY + 'px', left: contextMenuX + 'px' }"
+          @click.stop
+        >
+          <ul class="context-menu-list">
+            <li @click="requestReplace('replace')">Replace module…</li>
+          </ul>
+        </div>
+      </teleport>
+    </div>
 </template>
 
 <script setup>
-import { computed, nextTick, ref, useId } from "vue"
+import { computed, nextTick, ref, useId, onBeforeUnmount } from "vue"
 import { Handle, Position, useVueFlow } from "@vue-flow/core"
 import { NodeResizer } from "@vue-flow/node-resizer"
 import { Delete, Edit, Key, Place, Plus } from "@element-plus/icons-vue"
@@ -118,7 +135,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(["open-edit-dialog"])
+const emit = defineEmits(["open-edit-dialog", "request-replace-module", "request-compatibility-check", "module-replaced"])
 
 const id = useId()
 const moduleNode = ref(null)
@@ -258,6 +275,95 @@ function saveEdit() {
   updateNodeData(props.id, { name: editingName.value })
   isEditing.value = false
 }
+
+const contextMenuVisible = ref(false)
+const contextMenuX = ref(0)
+const contextMenuY = ref(0)
+
+function closeContextMenu() {
+  contextMenuVisible.value = false
+  document.removeEventListener("click", closeContextMenu)
+}
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", closeContextMenu)
+})
+
+function openContextMenu(event) {
+  event.stopPropagation()
+  event.preventDefault()
+
+  let x = event.clientX
+  let y = event.clientY
+
+  const pad = 8
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const menuWidth = 150
+  const menuHeight = 200
+  if (x + menuWidth + pad > vw) x = vw - menuWidth - pad
+  if (y + menuHeight + pad > vh) y = vh - menuHeight - pad
+
+  contextMenuX.value = x
+  contextMenuY.value = y
+  contextMenuVisible.value = true
+  document.addEventListener("click", closeContextMenu)
+}
+
+function requestReplace(mode) {
+  closeContextMenu()
+  emit("request-replace-module", { nodeId: props.id, mode, nodeData: props.data })
+}
+
+function checkCompatibility() {
+  closeContextMenu()
+  emit("request-compatibility-check", { nodeId: props.id, nodeData: props.data })
+}
+
+function compareCompatibility(nodeData, candidateModule) {
+  const existingNames = new Set((nodeData?.ports || []).map((p) => p.name || p.variable || ""))
+  const candidateNames = new Set((candidateModule?.ports || []).map((p) => p.name || p.variable || ""))
+  const missingInCandidate = [...existingNames].filter((n) => n && !candidateNames.has(n))
+  const newInCandidate = [...candidateNames].filter((n) => n && !existingNames.has(n))
+  const matching = [...candidateNames].filter((n) => n && existingNames.has(n))
+  return { missingInCandidate, newInCandidate, matching, compatible: missingInCandidate.length === 0 }
+}
+
+async function applyReplacement(newModule, options = { retainMatches: false }) {
+  if (!newModule) return
+  const retain = !!options.retainMatches
+  let finalPorts = []
+  if (retain && Array.isArray(newModule.ports)) {
+    const existingByKey = {}
+    for (const p of props.data.ports || []) {
+      const key = p.name || p.variable || ""
+      if (key) existingByKey[key] = p
+    }
+    finalPorts = (newModule.ports || []).map((p) => {
+      const key = p.name || p.variable || ""
+      if (key && existingByKey[key]) return existingByKey[key]
+      return { name: p.name || key || `port_${Math.random().toString(36).slice(2, 8)}`, type: p.type || "left", ...p }
+    })
+  } else {
+    finalPorts = (newModule.ports || []).map((p, i) => ({ name: p.name || `port_${i}`, type: p.type || "left", ...p }))
+  }
+
+  const newData = {
+    ...props.data,
+    name: newModule.name ?? props.data.name,
+    domainType: newModule.domainType ?? props.data.domainType,
+    ports: finalPorts,
+    moduleType: newModule.moduleType ?? newModule.type ?? props.data.moduleType,
+  }
+
+  updateNodeData(props.id, newData)
+  await nextTick()
+  updateNodeInternals(props.id)
+  emit("module-replaced", { nodeId: props.id, newModule, retained: retain })
+}
+
+defineExpose({ applyReplacement, compareCompatibility })
+
 </script>
 
 <style scoped>
@@ -330,6 +436,33 @@ div.module-name,
   overflow: hidden;
   text-overflow: ellipsis;
   user-select: none;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 10000;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  min-width: 180px;
+  padding: 6px 0;
+}
+
+.context-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.context-menu-list li {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.context-menu-list li:hover {
+  background: #f5f7fa;
 }
 
 /* 

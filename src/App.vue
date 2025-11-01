@@ -85,6 +85,10 @@
                 :data="props.data"
                 :selected="props.selected"
                 @open-edit-dialog="onOpenEditDialog"
+                @request-replace-module="onRequestReplace"
+                @request-compatibility-check="onRequestCompatibilityCheck"
+                @module-replaced="onModuleReplaced"
+                :ref="el => (nodeRefs[props.id] = el)"
               />
             </template>
             <Workbench>
@@ -355,6 +359,65 @@ const handleParametersFile = (file) => {
       })
     },
   })
+}
+
+const nodeRefs = ref({})
+
+// Simple module picker stub (to be replaced with a proper dialog)
+async function openModulePicker() {
+  if (!store.availableModules || store.availableModules.length === 0) {
+    ElNotification.warning({ title: "No modules", message: "No available modules to select." })
+    return null
+  }
+  const list = store.availableModules
+    .map((m, i) => `${i}: ${m.filename || m.name || m.componentName || "module"}`)
+    .join("\n")
+  const response = window.prompt(`Select module index:\n${list}\n\nEnter index or cancel to abort`)
+  if (response === null) return null
+  const idx = parseInt(response, 10)
+  if (Number.isNaN(idx) || idx < 0 || idx >= store.availableModules.length) {
+    ElNotification.error({ title: "Invalid selection", message: "Selection out of range." })
+    return null
+  }
+  return store.availableModules[idx]
+}
+
+// Called from ModuleNode via event
+async function onRequestReplace({ nodeId, mode, nodeData }) {
+  const selectedModule = await openModulePicker()
+  if (!selectedModule) return
+  const child = nodeRefs.value[nodeId]
+  if (child && child.applyReplacement) {
+    await child.applyReplacement(selectedModule, { retainMatches: mode === "replace-retain" })
+  } else {
+    ElNotification.info({ title: "Replace", message: "Module instance not available; implement fallback." })
+  }
+}
+
+// Compatibility check handler
+async function onRequestCompatibilityCheck({ nodeId, nodeData }) {
+  const selectedModule = await openModulePicker()
+  if (!selectedModule) return
+  const child = nodeRefs.value[nodeId]
+  let report = null
+  if (child && child.compareCompatibility) {
+    report = child.compareCompatibility(nodeData, selectedModule)
+  } else {
+    const existingNames = new Set(nodeData.ports.map((p) => p.name || p.variable || ""))
+    const candidateNames = new Set((selectedModule.ports || []).map((p) => p.name || p.variable || ""))
+    const missingInCandidate = [...existingNames].filter((n) => n && !candidateNames.has(n))
+    const newInCandidate = [...candidateNames].filter((n) => n && !existingNames.has(n))
+    const matching = [...candidateNames].filter((n) => n && existingNames.has(n))
+    report = { missingInCandidate, newInCandidate, matching, compatible: missingInCandidate.length === 0 }
+  }
+
+  const msg = `Compatible: ${report.compatible}\nMissing: ${report.missingInCandidate.length}\nNew: ${report.newInCandidate.length}\nMatching: ${report.matching.length}`
+  ElNotification({ title: "Compatibility Report", message: msg, duration: 6000 })
+}
+
+// Simple notification when replacement completes
+function onModuleReplaced({ nodeId, newModule, retained }) {
+  ElNotification.success({ title: "Module replaced", message: `${newModule.filename || newModule.name || "module"} (retained: ${retained})` })
 }
 
 function handleSaveWorkflow() {
