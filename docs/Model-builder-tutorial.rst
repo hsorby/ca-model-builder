@@ -1,3 +1,6 @@
+Building Your First Model with CA Model Builder
+================================================   
+
 This tutorial builds on the introduction provided in :ref:`CA-model-builder-introduction` to help users in assembling their first model. 
 
 Step 1: Import CellML Modules

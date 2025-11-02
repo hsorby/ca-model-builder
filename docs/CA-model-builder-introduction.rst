@@ -1,4 +1,8 @@
 .. _CA-model-builder-introduction:
+
+CA Model Builder Introduction
+=================================   
+
 Circulatory Autogen Model Builder (CAMB) has been designed to as a companion application for `Circulatory Autogen <https://github.com/FinbarArgus/circulatory_autogen/tree/master>`_, a software package for coupling CellML modules and facilitating model calibration, parameter identifiability, and sensitivity analysis. When generating coupled models using Circulatory Autogen, users need to provide two key configuration files (among others):
 
 * vessel_array.csv: A CSV file defining the relationships between modules with shared parameters.
