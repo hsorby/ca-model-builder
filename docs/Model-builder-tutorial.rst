@@ -83,7 +83,6 @@ Define the ports as shown in the following images:
 Lumen
 ~~~~~~~~~~~~~~~~~~~~~
 .. image:: assets/images/ports-lumen.png
-
    :alt: Defining ports for Lumen module
    :width: 600px
    :align: center
@@ -91,7 +90,6 @@ Lumen
 Membrane
 ~~~~~~~~~~~~~~~~~~~~~
 .. image:: assets/images/ports-membrane.png
-
    :alt: Defining ports for membrane module
    :width: 600px
    :align: center
@@ -99,7 +97,6 @@ Membrane
 ENaC
 ~~~~~~~~~~~~~~~~~~~~~
 .. image:: assets/images/ports-ENaC.png
-
    :alt: Defining ports for ENaC module
    :width: 600px
    :align: center
@@ -107,7 +104,6 @@ ENaC
 Cell
 ~~~~~~~~~~~~~~~~~~~~~
 .. image:: assets/images/ports-Cell.png
-
    :alt: Defining ports for Cell module
    :width: 600px
    :align: center
