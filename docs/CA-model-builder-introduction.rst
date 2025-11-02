@@ -1,5 +1,3 @@
-.. _CA-model-builder-introduction:
-
 CA Model Builder Introduction
 =================================   
 

@@ -7,7 +7,7 @@ This tutorial builds on the introduction provided in :ref:`CA model builder intr
 
 Copy and paste the local development server address (usually http://localhost:5173) into your web browser to access the CA Model Builder user interface. The terminal should look similar to the image below and the server address follows the "Local:" label:
 
-::image:: assets/images/local-dev-server.png
+.. image:: assets/images/local-dev-server.png
    :alt: Local development server address in terminal
    :width: 600px
    :align: center
@@ -16,7 +16,7 @@ Step 1: Import CellML Modules
 --------------------------------
 The first step in building a model is to import the desired CellML modules into CAMB. This can be done by clicking the "Load Modules" button located in the upper-right-hand corner of the user interface. 
 
-::image:: assets/images/import-module.png
+.. image:: assets/images/import-module.png
    :alt: Load Modules button highlighted in user interface
    :width: 600px
    :align: center
@@ -31,14 +31,14 @@ To add a module to the workspace area, simply drag and drop the desired module f
 
 Drag and drop the "simple_lumen", "simple_membrane", "ENaC", and "simple_cell" modules from the Module List into the workspace area. 
 
-::image:: assets/images/modules-placed-no-name.png
+.. image:: assets/images/modules-placed-no-name.png
    :alt: Modules placed in workspace area
    :width: 600px
    :align: center
 
 Rename the modules to "Lumen", "Membrane", and "Cell", respectively. Leave the ENaC module name unchanged. The workspace should now look similar to the following image:
 
-::image:: assets/images/modules-placed-renamed.png
+.. image:: assets/images/modules-placed-renamed.png
    :alt: Modules placed in workspace area
    :width: 600px
    :align: center
@@ -52,7 +52,7 @@ To indicate that two modules have shared variables, users need to create port no
 
 Add port nodes to the module nodes as in the following image:
 
-::image:: assets/images/modules-port-nodes.png
+.. image:: assets/images/modules-port-nodes.png
    :alt: Modules with port nodes added
    :width: 600px
    :align: center
@@ -82,7 +82,7 @@ Define the ports as shown in the following images:
 
 Lumen
 ~~~~~~~~~~~~~~~~~~~~~
-::image:: assets/images/ports-lumen.png
+.. image:: assets/images/ports-lumen.png
 
    :alt: Defining ports for Lumen module
    :width: 600px
@@ -90,7 +90,7 @@ Lumen
 
 Membrane
 ~~~~~~~~~~~~~~~~~~~~~
-::image:: assets/images/ports-membrane.png
+.. image:: assets/images/ports-membrane.png
 
    :alt: Defining ports for membrane module
    :width: 600px
@@ -98,7 +98,7 @@ Membrane
 
 ENaC
 ~~~~~~~~~~~~~~~~~~~~~
-::image:: assets/images/ports-ENaC.png
+.. image:: assets/images/ports-ENaC.png
 
    :alt: Defining ports for ENaC module
    :width: 600px
@@ -106,7 +106,7 @@ ENaC
 
 Cell
 ~~~~~~~~~~~~~~~~~~~~~
-::image:: assets/images/ports-Cell.png
+.. image:: assets/images/ports-Cell.png
 
    :alt: Defining ports for Cell module
    :width: 600px
