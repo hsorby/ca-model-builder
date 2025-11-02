@@ -100,12 +100,13 @@
       <teleport to="body">
         <div 
           v-if="contextMenuVisible"
+          ref="contextMenu"
           class="context-menu"
           :style="{ top: contextMenuY + 'px', left: contextMenuX + 'px' }"
           @click.stop
         >
           <ul class="context-menu-list">
-            <li @click="requestReplace('replace')">Replace module…</li>
+            <li @click="openReplacementDialog('replace')">Replace module</li>
           </ul>
         </div>
       </teleport>
@@ -135,7 +136,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(["open-edit-dialog", "request-replace-module", "request-compatibility-check", "module-replaced"])
+const emit = defineEmits(["open-edit-dialog", "open-replacement-dialog", "module-replaced"])
 
 const id = useId()
 const moduleNode = ref(null)
@@ -316,7 +317,7 @@ onBeforeUnmount(() => {
   removeMenuOpenListeners()
 })
 
-function openContextMenu(event) {
+async function openContextMenu(event) {
   event.stopPropagation()
   event.preventDefault()
 
@@ -335,39 +336,22 @@ function openContextMenu(event) {
   contextMenuY.value = y
   contextMenuVisible.value = true
 
+  await nextTick()
+
   // close when clicking elsewhere and pointer down/drag start
   document.addEventListener("click", closeContextMenu)
-  document.addEventListener("pointerdown", onDocumentPointerDown, true)
   document.addEventListener("dragstart", closeContextMenu)
-
-    // if the module list exists, also attach a direct click listener so clicks there close the menu
-  const ml = document.querySelector(".module-list-container")
-  if (ml) {
-    ml.addEventListener("click", closeContextMenu)
-    moduleListClickEl.value = ml
-  }
-
-  // announce to any listeners that the context menu has opened
-  document.dispatchEvent(new CustomEvent("module-context-open", { detail: { nodeId: props.id } }))
+  document.addEventListener("pointerdown", onDocumentPointerDown, true)
 }
 
-function requestReplace(mode) {
+async function openReplacementDialog() {
+  emit("open-replacement-dialog", { 
+    nodeId: props.id, 
+    nodeData: props.data,
+    name: props.data.name,
+    portOptions: props.data.portOptions,
+    portLabels: props.data.portLabels, })
   closeContextMenu()
-  emit("request-replace-module", { nodeId: props.id, mode, nodeData: props.data })
-}
-
-function checkCompatibility() {
-  closeContextMenu()
-  emit("request-compatibility-check", { nodeId: props.id, nodeData: props.data })
-}
-
-function compareCompatibility(nodeData, candidateModule) {
-  const existingNames = new Set((nodeData?.ports || []).map((p) => p.name || p.variable || ""))
-  const candidateNames = new Set((candidateModule?.ports || []).map((p) => p.name || p.variable || ""))
-  const missingInCandidate = [...existingNames].filter((n) => n && !candidateNames.has(n))
-  const newInCandidate = [...candidateNames].filter((n) => n && !existingNames.has(n))
-  const matching = [...candidateNames].filter((n) => n && existingNames.has(n))
-  return { missingInCandidate, newInCandidate, matching, compatible: missingInCandidate.length === 0 }
 }
 
 async function applyReplacement(newModule, options = { retainMatches: false }) {
@@ -420,7 +404,7 @@ function handleDocumentContextmenu(e) {
   }
 }
 
-defineExpose({ applyReplacement, compareCompatibility })
+defineExpose({ applyReplacement })
 
 </script>
 
