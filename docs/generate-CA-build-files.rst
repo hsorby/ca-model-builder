@@ -22,7 +22,9 @@ The purpose of this tutorial is to familiarise users with the `user interface`_ 
 User Interface
 ----------------
 
-.. image:: /assets/images/CA-model-builder_UI.png
+The CAMB user interface is designed to be intuitive and user-friendly. The main components of the interface are highlighted in the image below:
+
+.. image::  /assets/images/CA-model-builder_UI.png
    :alt: CA Model Builder User Interface with workspace and module list highlighted
    :width: 200px
    :align: center
@@ -33,6 +35,7 @@ User Interface
 
 Core Elements & Interactions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Detail the main interactive components, their appearance, and how users interact with them. Use consistent terminology.
 
 * Buttons: Describe the visual cues (e.g., color, shape) and the action they perform (e.g., "Select the Save button to apply your changes").
