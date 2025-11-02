@@ -22,17 +22,14 @@ The purpose of this tutorial is to familiarise users with the `user interface`_ 
 User Interface
 ----------------
 
-Overview
-~~~~~~~~~~
-A brief, simple introduction that defines the UI's primary purpose and layout in plain language.
+.. image:: /assets/images/CA-model-builder_UI.png
+   :alt: CA Model Builder User Interface with workspace and module list highlighted
+   :width: 200px
+   :align: center
 
-Key Panels
-^^^^^^^^^^^^
-Describe the major sections or panels of the interface. Use clear headings and short, scannable paragraphs or bullet points.
-
-* Activity Bar: (Left-hand side) Allows you to switch between different views (e.g., Explorer, Search, Debug).
-* Editor Area: The central space where you view and edit content. You can open multiple files here.
-* Status Bar: (Bottom edge) Displays important information about the current project, such as file status and errors.
+* Module List: (Left-hand side) Allows you to switch between different views (e.g., Explorer, Search, Debug).
+* Workspace Area: The main area for users to place modules, draw connections, and edit ports (shared variables)
+* File Management Buttons: (Upper-right-hand side) Buttons for importing CellML files, loading parameters, saving/loading workspaces, and exporting CA configuration files.
 
 Core Elements & Interactions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
