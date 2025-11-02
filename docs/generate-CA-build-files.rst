@@ -26,7 +26,7 @@ The CAMB user interface is designed to be intuitive and user-friendly. The main 
 
 .. image:: assets/images/CA-model-builder_UI.png
    :alt: CA Model Builder User Interface with workspace and module list highlighted
-   :width: 200px
+   :width: 800px
    :align: center
 
 * Module List: (Left-hand side) Collapsible list of available CellML modules that can be dragged and dropped into the workspace area. 
@@ -42,7 +42,7 @@ Each module node represents a CellML module that has been imported and placed in
 
 .. image:: assets/images/module-elements.png
    :alt: Labelled module node
-   :width: 200px
+   :width: 800px
    :align: center
 
 Key
@@ -51,7 +51,7 @@ The key icon on each module node allows users to assign a colour to the module f
 
 .. image:: assets/images/Key.png
    :alt: Expanded Key menu
-   :width: 200px
+   :width: 800px
    :align: center
 
 Add Port Node
@@ -60,7 +60,7 @@ The pin icon on each module node allows users to add port nodes, which are nodes
 
 .. image:: assets/images/Add-port-node.png
    :alt: Expanded Add Port Node menu
-   :width: 200px
+   :width: 800px
    :align: center
 
 Edit Module 
@@ -69,7 +69,7 @@ The pencil icon on each module node opens a dialogue that allows users to edit t
 
 .. image:: assets/images/Edit-module-detail.png
    :alt: Expanded Add Port Node menu
-   :width: 200px
+   :width: 800px
    :align: center
 
 .. note:: 
