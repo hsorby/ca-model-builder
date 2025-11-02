@@ -1,7 +1,7 @@
 Building Your First Model with CA Model Builder
 ================================================   
 
-This tutorial builds on the introduction provided in :ref:`CA model builder introduction <CA-model-builder-introduction>` to help users in assembling their first model. Before starting the tutorial, please ensure you have cloned the repository and installed the necessary dependencies as outlined in the :ref:`README <README>`. Start the application by navigating the ca-model-builder directory in your terminal and running the command:: 
+This tutorial builds on the introduction provided in `CA model builder introduction <CA-model-builder-introduction.rst>`_ to help users in assembling their first model. Before starting the tutorial, please ensure you have cloned the repository and installed the necessary dependencies as outlined in the `README <../README.rst>`_. Start the application by navigating the ca-model-builder directory in your terminal and running the command:: 
    
    yarn dev
 
@@ -66,7 +66,7 @@ Once port nodes have been created on the relevant modules, users can connect the
 
 Connect the port nodes as shown in the following image:
 
-::image:: assets/images/modules-connected.png
+.. image:: assets/images/modules-connected.png
    :alt: Modules with connected ports
    :width: 600px
    :align: center
