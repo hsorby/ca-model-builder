@@ -24,7 +24,7 @@ User Interface
 
 The CAMB user interface is designed to be intuitive and user-friendly. The main components of the interface are highlighted in the image below:
 
-.. image:: docs/assets/images/CA-model-builder_UI.png
+.. image:: assets/images/CA-model-builder_UI.png
    :alt: CA Model Builder User Interface with workspace and module list highlighted
    :width: 200px
    :align: center
@@ -40,7 +40,7 @@ Module Node
 ^^^^^^^^^^^^
 Each module node represents a CellML module that has been imported and placed into the workspace area. The module node displays an editable module name (equivalent to the vessel_name in Circulatory Autogen) and the CellML component and file of origin. Users can drag and drop these nodes onto the workspace area from the module list. Each module node contains three icons that enable users to edit the colour (key), add port nodes, and edit the module.  
 
-.. image:: docs/assets/images/module-elements.png
+.. image:: assets/images/module-elements.png
    :alt: Labelled module node
    :width: 200px
    :align: center
@@ -49,7 +49,7 @@ Key
 ^^^^^^
 The key icon on each module node allows users to assign a colour to the module for visual identification. Clicking the key icon opens a colour selection menu with preset colours and labels.
 
-.. image:: docs/assets/images/Key.png
+.. image:: assets/images/Key.png
    :alt: Expanded Key menu
    :width: 200px
    :align: center
@@ -58,7 +58,7 @@ Add Port Node
 ^^^^^^^^^^^^^^
 The pin icon on each module node allows users to add port nodes, which are nodes that enable users to draw arrows between modules to indicate the existence of shared parameters. Clicking the pin icon adds a new port node to the module either on the top, left, right, or bottom of the selected module node.
 
-.. image:: docs/assets/images/Add-port-node.png
+.. image:: assets/images/Add-port-node.png
    :alt: Expanded Add Port Node menu
    :width: 200px
    :align: center
@@ -67,7 +67,7 @@ Edit Module
 ^^^^^^^^^^^^^^
 The pencil icon on each module node opens a dialogue that allows users to edit the module name and create ports by selecting variables from the CellML module. Port names are manually editable and variables are selectable from a dropdown list populated with variables from the CellML module. 
 
-.. image:: docs/assets/images/Edit-module-detail.png
+.. image:: assets/images/Edit-module-detail.png
    :alt: Expanded Add Port Node menu
    :width: 200px
    :align: center
