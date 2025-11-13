@@ -1,7 +1,3 @@
-<script setup>
-import { Background } from '@vue-flow/background'
-</script>
-
 <template>
   <div class="dropzone-background">
     <Background :size="2" :gap="20" pattern-color="#BDBDBD" />
@@ -11,6 +7,10 @@ import { Background } from '@vue-flow/background'
     </div>
   </div>
 </template>
+
+<script setup>
+import { Background } from '@vue-flow/background';
+</script>
 
 <style scoped>
 .dropzone-background {

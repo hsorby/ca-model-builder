@@ -53,7 +53,7 @@
             :disabled="!exportAvailable"
           >
             Export Model
-          </el-button>
+          </el-button> 
         </div>
       </div>
     </el-header>
@@ -69,30 +69,32 @@
       </div>
 
       <el-main class="workbench-main">
-        <div class="dnd-flow" @drop="onDrop">
-          <VueFlow
-            @dragover="onDragOver"
-            @dragleave="onDragLeave"
-            :translate-extent="finiteTranslateExtent"
-            :max-zoom="1.5"
-            :min-zoom="0.3"
-            :connection-line-options="connectionLineOptions"
-          >
-            <MiniMap />
-            <template #node-moduleNode="props">
-              <ModuleNode
-                :id="props.id"
-                :data="props.data"
-                :selected="props.selected"
-                @open-edit-dialog="onOpenEditDialog"
-              />
-            </template>
-            <Workbench>
-              <p v-if="isDragOver">Drop here</p>
-            </Workbench>
-          </VueFlow>
-        </div>
-      </el-main>
+        <SelectionArea>
+          <div class="dnd-flow" @drop="onDrop">
+            <VueFlow
+              @dragover="onDragOver"
+              @dragleave="onDragLeave"
+              :translate-extent="finiteTranslateExtent"
+              :max-zoom="1.5"
+              :min-zoom="0.3"
+              :connection-line-options="connectionLineOptions"
+            >
+              <MiniMap />
+              <template #node-moduleNode="props">
+                <ModuleNode
+                  :id="props.id"
+                  :data="props.data"
+                  :selected="props.selected"
+                  @open-edit-dialog="onOpenEditDialog"
+                />
+              </template>
+              <Workbench>
+                <p v-if="isDragOver">Drop here</p>
+              </Workbench>
+            </VueFlow>
+          </div>
+        </SelectionArea>
+        </el-main>
     </el-container>
   </el-container>
 
@@ -135,6 +137,7 @@ import ModuleNode from "./components/ModuleNode.vue"
 import useDragAndDrop from "./composables/useDnD"
 import EditModuleDialog from "./components/EditModuleDialog.vue"
 import SaveDialog from "./components/SaveDialog.vue"
+import SelectionArea from "./components/SelectionArea.vue"
 import { generateExportZip } from "./services/caExport"
 
 const {
