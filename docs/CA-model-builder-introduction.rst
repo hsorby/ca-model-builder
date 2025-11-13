@@ -48,7 +48,7 @@ The key icon on each module node allows users to assign a colour to the module f
    :align: center
 
 Add Port Node
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 The pin icon on each module node allows users to add port nodes, which are nodes that enable users to draw arrows between modules to indicate the existence of shared parameters. Clicking the pin icon adds a new port node to the module either on the top, left, right, or bottom of the selected module node.
 
 .. image:: assets/images/Add-port-node.png
@@ -70,6 +70,6 @@ The pencil icon on each module node opens a dialogue that allows users to edit t
     Module name (vessel_name) can also be edited by double-clicking while in the Workspace Area view. 
 
 Selecting Multiple Modules
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Users can select multiple modules by holding down the Control (or Command on Mac) key and clicking on the desired modules. Alternatively, users can hold the Shift key to click and drag to easily select multiple modules. Once selected, users can move or delete selected modules as a group.
 
