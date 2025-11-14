@@ -21,3 +21,8 @@
   z-index: 1;
   pointer-events: none;
 }
+
+.vue-flow__selection {
+  background: rgba(0, 100, 255, 0.1);
+  border: 1px solid #0064ff;
+}
