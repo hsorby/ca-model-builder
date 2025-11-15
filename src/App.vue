@@ -78,7 +78,10 @@
             :min-zoom="0.3"
             :connection-line-options="connectionLineOptions"
           >
-            <MiniMap />
+            <MiniMap 
+              :pannable="true"
+              :zoomable="true"
+            />
             <template #node-moduleNode="props">
               <ModuleNode
                 :id="props.id"
