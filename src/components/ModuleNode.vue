@@ -350,15 +350,15 @@ async function openReplacementDialog() {
     nodeData: props.data,
     name: props.data.name,
     portOptions: props.data.portOptions,
-    portLabels: props.data.portLabels, })
+    portLabels: props.data.portLabels, 
+  })
   closeContextMenu()
 }
 
-async function applyReplacement(newModule, options = { retainMatches: false }) {
+async function applyReplacement(newModule, retainMatches) {
   if (!newModule) return
-  const retain = !!options.retainMatches
   let finalPorts = []
-  if (retain && Array.isArray(newModule.ports)) {
+  if (retainMatches && Array.isArray(newModule.ports)) {
     const existingByKey = {}
     for (const p of props.data.ports || []) {
       const key = p.name || p.variable || ""
@@ -380,9 +380,9 @@ async function applyReplacement(newModule, options = { retainMatches: false }) {
     ports: finalPorts,
     moduleType: newModule.moduleType ?? newModule.type ?? props.data.moduleType,
   }
+  console.log("Applying replacement to node", props.id, "with data:", newData)
 
-  updateNodeData(props.id, newData)
-  await nextTick()
+  updateNodeData(props.id, { ports: newPortsArray })
   updateNodeInternals(props.id)
   emit("module-replaced", { nodeId: props.id, newModule, retained: retain })
 }

@@ -4,6 +4,7 @@
         title="Replace Module"
         width="600px"
         teleported
+        @closed="resetForm"
         @update:model-value="closeDialog"
     >
     <div style="display:flex; gap:12px;">
@@ -35,21 +36,32 @@ import ModuleList from "./ModuleList.vue"
 import { ElCheckbox,  ElButton } from "element-plus"
 
 const props = defineProps({
-  modelValue: { type: Boolean, default: false },
+  modelValue: {
+    type: Boolean,
+    default: false,
+  },
+  modules: {
+    type: Array,
+    default: () => [], 
+  },
+
 })
 
 const emit = defineEmits([
   "update:modelValue", // Required for v-model
-  "select", // Emits the new data
+  "confirm", // Emits the new data
 ])
 
 const selectedModule = ref(null)
 const retainMatches = ref(false)
 
-function closeDialog() {
-  emit("update:modelValue", false)
+function resetForm() {
   selectedModule.value = null
   retainMatches.value = false
+}
+
+function closeDialog() {
+  emit("update:modelValue", false)
 }
 
 function onModuleSelected(module) {
@@ -57,11 +69,13 @@ function onModuleSelected(module) {
 }
 
 function handleConfirm() {
-  if (!selectedModule.value) return
-  emit("select", { module: selectedModule.value, retainMatches: retainMatches.value })
-  emit("update:modelValue", false)
-  selectedModule.value = null
-  retainMatches.value = false
+  console.log(selectedModule.value)
+  emit("confirm", { 
+    name: selectedModule.value.componentName,
+    componentName: selectedModule.value.componentName,
+    sourceFile: selectedModule.value.sourceFile,
+  })
+  closeDialog()
 }
 
 </script>

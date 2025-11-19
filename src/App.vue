@@ -126,7 +126,8 @@
     v-model="replacementDialogVisible"
     :modules="store.availableModules"
     :node-id="currentEditingNode.nodeId"
-    @select="onReplacementChosen"
+    :port-options="currentEditingNode?.portOptions || []"
+    :port-labels="currentEditingNode?.portLabels || []"
     @confirm="onReplaceConfirm"
   />
 </template>
@@ -379,17 +380,20 @@ function onOpenReplacementDialog(eventPayload) {
   replacementDialogVisible.value = true
 }
 
-async function onReplaceConfirm(){
+async function onReplaceConfirm(eventPayload){
+
+  console.log("replace confirm received:", eventPayload)
   const nodeId = currentEditingNode.value.nodeId
   if (!nodeId) return
 
+  const compLabel = eventPayload.componentName
+  const filePart = eventPayload.sourceFile
+  const label = filePart ? `${compLabel} — ${filePart}` : compLabel
 
+  eventPayload.label = label
+  updateNodeData(nodeId, eventPayload)
+  replacementDialogVisible.value = false
 }
-
-// Simple notification when replacement completes
-// function onModuleReplaced({ nodeId, newModule, retained }) {
-//  ElNotification.success({ title: "Module replaced", message: `${newModule.filename || newModule.name || "module"} (retained: ${retained})` })
-//}
 
 function handleSaveWorkflow() {
   saveDialogVisible.value = true
@@ -586,16 +590,6 @@ onMounted(async () => {
     }
   }
 })
-
-let replacementNodeId = null
-
-async function onReplacementChosen({ module, retainMatches }) {
-  replacementDialogVisible.value = false
-/*  const node = nodeRefs.value?.[replacementNodeId]
-  if (node && node.applyReplacement) {
-    await node.applyReplacement(module, { retainMatches: retainMatches })
-  }*/
-}
 
 </script>
 
