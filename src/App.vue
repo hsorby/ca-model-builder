@@ -78,7 +78,11 @@
             :min-zoom="0.3"
             :connection-line-options="connectionLineOptions"
           >
-            <MiniMap />
+            <MiniMap 
+              :pannable="true"
+              :zoomable="true"
+            />
+            <Controls />
             <template #node-moduleNode="props">
               <ModuleNode
                 :id="props.id"
@@ -125,6 +129,7 @@ import { computed, inject, nextTick, onMounted, ref } from "vue"
 import { ElNotification } from "element-plus"
 import { MarkerType, useVueFlow, VueFlow } from "@vue-flow/core"
 import { DCaret } from "@element-plus/icons-vue"
+import { Controls } from "@vue-flow/controls"
 import { MiniMap } from "@vue-flow/minimap"
 import Papa from "papaparse"
 
