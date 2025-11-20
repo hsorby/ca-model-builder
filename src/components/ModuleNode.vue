@@ -136,7 +136,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(["open-edit-dialog", "open-replacement-dialog", "module-replaced"])
+const emit = defineEmits(["open-edit-dialog", "open-replacement-dialog"])
 
 const id = useId()
 const moduleNode = ref(null)
@@ -355,38 +355,6 @@ async function openReplacementDialog() {
   closeContextMenu()
 }
 
-async function applyReplacement(newModule, retainMatches) {
-  if (!newModule) return
-  let finalPorts = []
-  if (retainMatches && Array.isArray(newModule.ports)) {
-    const existingByKey = {}
-    for (const p of props.data.ports || []) {
-      const key = p.name || p.variable || ""
-      if (key) existingByKey[key] = p
-    }
-    finalPorts = (newModule.ports || []).map((p) => {
-      const key = p.name || p.variable || ""
-      if (key && existingByKey[key]) return existingByKey[key]
-      return { name: p.name || key || `port_${Math.random().toString(36).slice(2, 8)}`, type: p.type || "left", ...p }
-    })
-  } else {
-    finalPorts = (newModule.ports || []).map((p, i) => ({ name: p.name || `port_${i}`, type: p.type || "left", ...p }))
-  }
-
-  const newData = {
-    ...props.data,
-    name: newModule.name ?? props.data.name,
-    domainType: newModule.domainType ?? props.data.domainType,
-    ports: finalPorts,
-    moduleType: newModule.moduleType ?? newModule.type ?? props.data.moduleType,
-  }
-  console.log("Applying replacement to node", props.id, "with data:", newData)
-
-  updateNodeData(props.id, { ports: newPortsArray })
-  updateNodeInternals(props.id)
-  emit("module-replaced", { nodeId: props.id, newModule, retained: retain })
-}
-
 // Close when another module opens a context menu or when right-click happens outside this node
 function handleExternalContextOpen(e) {
   const openId = e?.detail?.nodeId ?? null
@@ -403,8 +371,6 @@ function handleDocumentContextmenu(e) {
     closeContextMenu()
   }
 }
-
-defineExpose({ applyReplacement })
 
 </script>
 

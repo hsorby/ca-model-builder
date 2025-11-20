@@ -44,7 +44,14 @@ const props = defineProps({
     type: Array,
     default: () => [], 
   },
-
+  portOptions: {
+    type: Array,
+    default: () => [],
+  },
+  portLabels: {
+    type: Array,
+    default: () => [],
+  }
 })
 
 const emit = defineEmits([
@@ -69,12 +76,30 @@ function onModuleSelected(module) {
 }
 
 function handleConfirm() {
-  console.log(selectedModule.value)
+  // need a check for existing names and add suffixes if needed
+  let moduleVariables = selectedModule.value.portOptions || []
+  let finalPortLabels = []
+
+  if (retainMatches.value) {
+    // find ports that match the options available in the new module
+    moduleVariables = moduleVariables.filter(newPort =>
+    props.portLabels.some(oldPort => oldPort.option === newPort.name))
+    finalPortLabels = moduleVariables.map(newPort => {
+    const match = props.portLabels.find(oldPort => oldPort.option === newPort.name);
+    return {
+      option: newPort.name,
+      label: match.label
+    };
+  });
+  } 
+
   emit("confirm", { 
     name: selectedModule.value.componentName,
     componentName: selectedModule.value.componentName,
     sourceFile: selectedModule.value.sourceFile,
+    portLabels: finalPortLabels,
   })
+
   closeDialog()
 }
 
