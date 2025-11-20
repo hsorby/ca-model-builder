@@ -5,6 +5,7 @@
     ref="moduleNode"
     :class="{ selected: selected }"
     @contextmenu.stop.prevent="openContextMenu"
+    @mousedown.capture="StopDrag"
   >
     <NodeResizer min-width="180" min-height="75" :is-visible="selected" />
 
@@ -263,6 +264,12 @@ async function startEditing(event) {
 
   // Focus the input
   inputRef.value?.focus()
+}
+
+function StopDrag(event) {
+  if (isEditing.value) {
+    event.stopPropagation()
+  }
 }
 
 // This is triggered by pressing Enter or clicking away
