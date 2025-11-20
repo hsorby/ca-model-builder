@@ -51,7 +51,7 @@ const props = defineProps({
   portLabels: {
     type: Array,
     default: () => [],
-  }
+  },
 })
 
 const emit = defineEmits([
@@ -76,7 +76,6 @@ function onModuleSelected(module) {
 }
 
 function handleConfirm() {
-  // need a check for existing names and add suffixes if needed
   const moduleVariables = selectedModule.value.portOptions || []
 
   const finalPortLabels = retainMatches.value ? moduleVariables.map(newPort => {
@@ -85,7 +84,6 @@ function handleConfirm() {
   }).filter(Boolean) : [];
 
   emit("confirm", { 
-    name: selectedModule.value.componentName,
     componentName: selectedModule.value.componentName,
     sourceFile: selectedModule.value.sourceFile,
     portLabels: finalPortLabels,

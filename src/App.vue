@@ -380,18 +380,15 @@ function onOpenReplacementDialog(eventPayload) {
   replacementDialogVisible.value = true
 }
 
-async function onReplaceConfirm(eventPayload){
-
-  console.log("replace confirm received:", eventPayload)
+async function onReplaceConfirm(updatedData){
   const nodeId = currentEditingNode.value.nodeId
   if (!nodeId) return
-
-  const compLabel = eventPayload.componentName
-  const filePart = eventPayload.sourceFile
+  const compLabel = updatedData.componentName
+  const filePart = updatedData.sourceFile
   const label = filePart ? `${compLabel} — ${filePart}` : compLabel
 
-  eventPayload.label = label
-  updateNodeData(nodeId, eventPayload)
+  updatedData.label = label
+  updateNodeData(nodeId, updatedData)
   replacementDialogVisible.value = false
 }
 
