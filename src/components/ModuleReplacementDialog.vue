@@ -77,21 +77,12 @@ function onModuleSelected(module) {
 
 function handleConfirm() {
   // need a check for existing names and add suffixes if needed
-  let moduleVariables = selectedModule.value.portOptions || []
-  let finalPortLabels = []
+  const moduleVariables = selectedModule.value.portOptions || []
 
-  if (retainMatches.value) {
-    // find ports that match the options available in the new module
-    moduleVariables = moduleVariables.filter(newPort =>
-    props.portLabels.some(oldPort => oldPort.option === newPort.name))
-    finalPortLabels = moduleVariables.map(newPort => {
+  const finalPortLabels = retainMatches.value ? moduleVariables.map(newPort => {
     const match = props.portLabels.find(oldPort => oldPort.option === newPort.name);
-    return {
-      option: newPort.name,
-      label: match.label
-    };
-  });
-  } 
+    return match ? { option: newPort.name, label: match.label } : null;
+  }).filter(Boolean) : [];
 
   emit("confirm", { 
     name: selectedModule.value.componentName,
