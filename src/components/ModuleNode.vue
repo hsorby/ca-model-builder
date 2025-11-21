@@ -101,8 +101,9 @@ import { computed, nextTick, ref, useId } from "vue"
 import { Handle, Position, useVueFlow } from "@vue-flow/core"
 import { NodeResizer } from "@vue-flow/node-resizer"
 import { Delete, Edit, Key, Place } from "@element-plus/icons-vue"
+import { filter } from "jszip"
 
-const { updateNodeData, updateNodeInternals } = useVueFlow()
+const { updateNodeData, updateNodeInternals, setEdges } = useVueFlow()
 
 const props = defineProps({
   data: {
@@ -159,10 +160,6 @@ function handleSetDomainType(typeCommand) {
   updateNodeData(props.id, { domainType: newType })
 }
 
-function portCount(aspect) {
-  return props.data.ports.filter((p) => p.type === aspect).length
-}
-
 function getHandleStyle(port) {
   const portsOfSameType = props.data.ports.filter(p => p.type === port.type)
   const n = portsOfSameType.length
@@ -191,10 +188,20 @@ function getHandleStyle(port) {
 }
 
 async function removePort(portIdToRemove) {
+  const port = props.data.ports.find(p => p.uid === portIdToRemove)
+  if (!port) return
+
+  const handleId = `port_${port.type}_${port.uid}`
+
+  // Remove edges connected to this port
+  setEdges(prevEdges =>
+    prevEdges.filter(edge => edge.sourceHandle !== handleId && edge.targetHandle !== handleId)
+  )
+
   // Create a new array filtering out the port we want to remove
   const newPortsArray = props.data.ports.filter(
     port => port.uid !== portIdToRemove
-);
+  );
 
   // Update the node's data
   updateNodeData(props.id, { ports: newPortsArray })
