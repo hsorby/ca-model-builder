@@ -48,7 +48,21 @@ export function useScreenshot() {
     function toPng(el, options = { quality: 1 }) {
         error.value = null;
 
-        return ElToPng(el, options)
+        const newOptions = {
+            ...options,
+            filter: (node) => {
+                if (
+                    node.classList?.contains('vue-flow__minimap') ||
+                    node.classList?.contains('vue-flow__controls') ||
+                    node.classList?.contains('dropzone-background')
+                ) {
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        return ElToPng(el, newOptions)
         .then((data) => {
             dataUrl.value = data;
             imgType.value = 'png';
