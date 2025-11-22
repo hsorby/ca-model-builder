@@ -6,7 +6,20 @@ export function useScreenshot() {
   const imgType = ref('png');
   const error = ref(null);
 
+  function fixEdges(el) {
+    const paths = el.querySelectorAll('.vue-flow__connection-path, .vue-flow__edge-path');
+    paths.forEach(path => {
+        path.setAttribute('stroke-width', '3'); 
+        const computedStyle = getComputedStyle(path);
+        const strokeColor = computedStyle.stroke || '#222';
+        path.setAttribute('stroke', strokeColor); 
+        path.setAttribute('fill', 'none');    
+    });
+  }
+
   async function capture(el, options = {}) {
+
+    fixEdges(el);
     let data;
 
     const fileName = options.fileName ?? `vue-flow-screenshot-${Date.now()}`;
@@ -50,6 +63,8 @@ export function useScreenshot() {
 
         const newOptions = {
             ...options,
+
+            // remove unwanted visual elements from screenshot
             filter: (node) => {
                 if (
                     node.classList?.contains('vue-flow__minimap') ||
