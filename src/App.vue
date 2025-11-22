@@ -82,7 +82,11 @@
               :pannable="true"
               :zoomable="true"
             />
-            <Controls />
+            <Controls>
+              <ControlButton title="PNG Screenshot" @click="doPNGscreenshot">
+                <CameraFilled />
+              </ControlButton>
+            </Controls>
             <template #node-moduleNode="props">
               <ModuleNode
                 :id="props.id"
@@ -128,8 +132,8 @@
 import { computed, inject, nextTick, onMounted, ref } from "vue"
 import { ElNotification } from "element-plus"
 import { MarkerType, useVueFlow, VueFlow } from "@vue-flow/core"
-import { DCaret } from "@element-plus/icons-vue"
-import { Controls } from "@vue-flow/controls"
+import { DCaret, CameraFilled } from "@element-plus/icons-vue"
+import { Controls, ControlButton } from "@vue-flow/controls"
 import { MiniMap } from "@vue-flow/minimap"
 import Papa from "papaparse"
 
@@ -140,6 +144,7 @@ import ModuleNode from "./components/ModuleNode.vue"
 import useDragAndDrop from "./composables/useDnD"
 import EditModuleDialog from "./components/EditModuleDialog.vue"
 import SaveDialog from "./components/SaveDialog.vue"
+import { useScreenshot } from "./services/useScreenshot"
 import { generateExportZip } from "./services/caExport"
 
 const {
@@ -537,6 +542,18 @@ const startResize = (event) => {
   window.addEventListener("mouseup", stopResize)
   // Disable text selection globally while dragging
   document.body.style.userSelect = "none"
+}
+
+const { vueFlowRef } = useVueFlow();
+const { capture } = useScreenshot();
+
+function doPNGscreenshot() {
+  if(!vueFlowRef.value) {
+    ElNotification.error("VueFlow element not found.")
+    return;
+  }
+
+  capture(vueFlowRef.value, { shouldDownload: true});
 }
 
 // --- Development Test Data ---
