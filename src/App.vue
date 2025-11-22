@@ -83,7 +83,7 @@
               :zoomable="true"
             />
             <Controls>
-              <ControlButton title="Low-res Screenshot">
+              <ControlButton title="PNG Screenshot" @click="doPNGscreenshot">
                 <CameraFilled />
               </ControlButton>
             </Controls>
@@ -144,6 +144,7 @@ import ModuleNode from "./components/ModuleNode.vue"
 import useDragAndDrop from "./composables/useDnD"
 import EditModuleDialog from "./components/EditModuleDialog.vue"
 import SaveDialog from "./components/SaveDialog.vue"
+import { useScreenshot } from "./services/useScreenshot"
 import { generateExportZip } from "./services/caExport"
 
 const {
@@ -541,6 +542,18 @@ const startResize = (event) => {
   window.addEventListener("mouseup", stopResize)
   // Disable text selection globally while dragging
   document.body.style.userSelect = "none"
+}
+
+const { vueFlowRef } = useVueFlow();
+const { capture } = useScreenshot();
+
+function doPNGscreenshot() {
+  if(!vueFlowRef.value) {
+    ElNotification.error("VueFlow element not found.")
+    return;
+  }
+
+  capture(vueFlowRef.value, { shouldDownload: true});
 }
 
 // --- Development Test Data ---
