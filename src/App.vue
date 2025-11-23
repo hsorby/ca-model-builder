@@ -83,6 +83,7 @@
           <HelperLines 
           :horizontal="helperLineHorizontal"
           :vertical="helperLineVertical"
+          :alignment="alignment"
           />
             <MiniMap 
               :pannable="true"
@@ -164,6 +165,7 @@ const { onDragOver, onDrop, onDragLeave, isDragOver } = useDragAndDrop()
 
 const helperLineHorizontal = ref(null)
 const helperLineVertical = ref(null)
+const alignment = ref('edge')
 
 function updateHelperLines(changes, nodes) {
   helperLineHorizontal.value = undefined
@@ -180,6 +182,7 @@ function updateHelperLines(changes, nodes) {
     // if helper lines are returned, we set them so that they can be displayed
     helperLineHorizontal.value = helperLines.horizontal
     helperLineVertical.value = helperLines.vertical
+    alignment.value = helperLines.alignment
   }
 
   return changes

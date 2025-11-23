@@ -5,6 +5,7 @@ export function getHelperLines(change, nodes, distance = 5) {
     horizontal: undefined,
     vertical: undefined,
     snapPosition: { x: undefined, y: undefined },
+    alignment: undefined // 'edge' | 'centre'
   }
 
   const nodeA = nodes.find((node) => node.id === change.id)
@@ -54,6 +55,7 @@ export function getHelperLines(change, nodes, distance = 5) {
       if (distanceLeftLeft < verticalDistance) {
         result.snapPosition.x = nodeBBounds.left
         result.vertical = nodeBBounds.left
+        result.alignment = 'edge'
         verticalDistance = distanceLeftLeft
       }
 
@@ -70,6 +72,7 @@ export function getHelperLines(change, nodes, distance = 5) {
       if (distanceRightRight < verticalDistance) {
         result.snapPosition.x = nodeBBounds.right - nodeABounds.width
         result.vertical = nodeBBounds.right
+        result.alignment = 'edge'
         verticalDistance = distanceRightRight
       }
 
@@ -86,6 +89,7 @@ export function getHelperLines(change, nodes, distance = 5) {
       if (distanceLeftRight < verticalDistance) {
         result.snapPosition.x = nodeBBounds.right
         result.vertical = nodeBBounds.right
+        result.alignment = 'edge'
         verticalDistance = distanceLeftRight
       }
 
@@ -127,6 +131,7 @@ export function getHelperLines(change, nodes, distance = 5) {
       if (distanceBottomTop < horizontalDistance) {
         result.snapPosition.y = nodeBBounds.top - nodeABounds.height
         result.horizontal = nodeBBounds.top
+        result.alignment = 'edge'
         horizontalDistance = distanceBottomTop
       }
 
@@ -138,6 +143,7 @@ export function getHelperLines(change, nodes, distance = 5) {
       if (distanceBottomBottom < horizontalDistance) {
         result.snapPosition.y = nodeBBounds.bottom - nodeABounds.height
         result.horizontal = nodeBBounds.bottom
+        result.alignment = 'edge'
         horizontalDistance = distanceBottomBottom
       }
 
@@ -152,6 +158,7 @@ export function getHelperLines(change, nodes, distance = 5) {
       if (distanceTopBottom < horizontalDistance) {
         result.snapPosition.y = nodeBBounds.bottom
         result.horizontal = nodeBBounds.bottom
+        result.alignment = 'edge'
         horizontalDistance = distanceTopBottom
       }
 
@@ -161,6 +168,7 @@ export function getHelperLines(change, nodes, distance = 5) {
       if (distanceCentreX < verticalDistance) {
         result.snapPosition.x = nodeBBounds.centreX - nodeABounds.width / 2
         result.vertical = nodeBBounds.centreX
+        result.alignment = 'centre'
         verticalDistance = distanceCentreX
       }
 
@@ -170,6 +178,7 @@ export function getHelperLines(change, nodes, distance = 5) {
       if (distanceCentreY < horizontalDistance) {
         result.snapPosition.y = nodeBBounds.centreY - nodeABounds.height / 2
         result.horizontal = nodeBBounds.centreY
+        result.alignment = 'centre'
         horizontalDistance = distanceCentreY
       }
 
