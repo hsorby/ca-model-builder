@@ -20,6 +20,8 @@ export function getHelperLines(change, nodes, distance = 5) {
     bottom: change.position.y + (nodeA.dimensions.height ?? 0),
     width: nodeA.dimensions.width ?? 0,
     height: nodeA.dimensions.height ?? 0,
+    centreX: change.position.x + (nodeA.dimensions.width ?? 0) / 2,
+    centreY: change.position.y + (nodeA.dimensions.height ?? 0) / 2
   }
 
   let horizontalDistance = distance
@@ -35,6 +37,8 @@ export function getHelperLines(change, nodes, distance = 5) {
         bottom: nodeB.position.y + (nodeB.dimensions.height ?? 0),
         width: nodeB.width ?? 0,
         height: nodeB.height ?? 0,
+        centreX: nodeB.position.x + (nodeB.dimensions.width ?? 0) / 2,
+        centreY: nodeB.position.y + (nodeB.dimensions.height ?? 0) / 2
       }
 
       //  |‾‾‾‾‾‾‾‾‾‾‾|
@@ -149,6 +153,24 @@ export function getHelperLines(change, nodes, distance = 5) {
         result.snapPosition.y = nodeBBounds.bottom
         result.horizontal = nodeBBounds.bottom
         horizontalDistance = distanceTopBottom
+      }
+
+      // Center X to Centre X
+
+      const distanceCentreX = Math.abs(nodeABounds.centreX - nodeBBounds.centreX)
+      if (distanceCentreX < verticalDistance) {
+        result.snapPosition.x = nodeBBounds.centreX - nodeABounds.width / 2
+        result.vertical = nodeBBounds.centreX
+        verticalDistance = distanceCentreX
+      }
+
+      // Center Y to Centre Y
+
+      const distanceCentreY = Math.abs(nodeABounds.centreY - nodeBBounds.centreY)
+      if (distanceCentreY < horizontalDistance) {
+        result.snapPosition.y = nodeBBounds.centreY - nodeABounds.height / 2
+        result.horizontal = nodeBBounds.centreY
+        horizontalDistance = distanceCentreY
       }
 
       return result
