@@ -77,7 +77,13 @@
             :max-zoom="1.5"
             :min-zoom="0.3"
             :connection-line-options="connectionLineOptions"
+            :nodes="nodes"
+            fit-view-on-init @nodes-change="onNodesChange"
           >
+          <HelperLines 
+          :horizontal="helperLineHorizontal"
+          :vertical="helperLineVertical"
+          />
             <MiniMap 
               :pannable="true"
               :zoomable="true"
@@ -138,7 +144,9 @@ import ModuleNode from "./components/ModuleNode.vue"
 import useDragAndDrop from "./composables/useDnD"
 import EditModuleDialog from "./components/EditModuleDialog.vue"
 import SaveDialog from "./components/SaveDialog.vue"
+import HelperLines from "./components/HelperLines.vue"
 import { generateExportZip } from "./services/caExport"
+import { getHelperLines } from './utils/utils'
 
 const {
   addEdges,
@@ -149,10 +157,38 @@ const {
   setViewport,
   toObject,
   updateNodeData,
-  viewport,
+  applyNodeChanges
 } = useVueFlow()
 
 const { onDragOver, onDrop, onDragLeave, isDragOver } = useDragAndDrop()
+
+const helperLineHorizontal = ref(null)
+const helperLineVertical = ref(null)
+
+function updateHelperLines(changes, nodes) {
+  helperLineHorizontal.value = undefined
+  helperLineVertical.value = undefined
+
+  if (changes.length === 1 && changes[0].type === 'position' && changes[0].dragging && changes[0].position) {
+    const helperLines = getHelperLines(changes[0], nodes)
+
+    // if we have a helper line, we snap the node to the helper line position
+    // this is being done by manipulating the node position inside the change object
+    changes[0].position.x = helperLines.snapPosition.x ?? changes[0].position.x
+    changes[0].position.y = helperLines.snapPosition.y ?? changes[0].position.y
+
+    // if helper lines are returned, we set them so that they can be displayed
+    helperLineHorizontal.value = helperLines.horizontal
+    helperLineVertical.value = helperLines.vertical
+  }
+
+  return changes
+}
+
+function onNodesChange(changes) {
+  const updatedChanges = updateHelperLines(changes, nodes.value)
+  nodes.value = applyNodeChanges(updatedChanges)
+}
 
 onConnect((connection) => {
   // Match what we specify in connectionLineOptions.
