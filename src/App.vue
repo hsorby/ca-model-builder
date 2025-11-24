@@ -28,6 +28,25 @@
 
           <el-divider direction="vertical" style="margin: 0 15px" />
 
+          <el-button
+            type="info"
+            @click="handleUndo"
+            style="margin-left: 10px"
+            :disabled="!historyStore.canUndo"
+          >
+            Undo
+          </el-button>
+          <el-button
+            type="info"
+            @click="handleRedo"
+            style="margin-left: 10px"
+            :disabled="!historyStore.canRedo"
+          >
+            Redo
+          </el-button>
+
+          <el-divider direction="vertical" style="margin: 0 15px" />
+
           <el-upload
             action="#"
             :auto-upload="false"
@@ -45,6 +64,8 @@
           >
             Save Model
           </el-button>
+
+          <el-divider direction="vertical" style="margin: 0 15px" />
 
           <el-button
             type="info"
@@ -73,15 +94,16 @@
           <VueFlow
             @dragover="onDragOver"
             @dragleave="onDragLeave"
+            @nodes-change="onChange"
+            @edges-change="onChange"
+            @node-drag-start="onNodeDragStart"
+            @node-drag-stop="onNodeDragStop"
             :translate-extent="finiteTranslateExtent"
             :max-zoom="1.5"
             :min-zoom="0.3"
             :connection-line-options="connectionLineOptions"
           >
-            <MiniMap 
-              :pannable="true"
-              :zoomable="true"
-            />
+            <MiniMap :pannable="true" :zoomable="true" />
             <Controls />
             <template #node-moduleNode="props">
               <ModuleNode
@@ -113,80 +135,78 @@
   <SaveDialog
     v-model="saveDialogVisible"
     @confirm="onSaveConfirm"
-    :default-name="store.lastSaveName"
+    :default-name="builderStore.lastSaveName"
   />
   <SaveDialog
     v-model="exportDialogVisible"
     @confirm="onExportConfirm"
     title="Export for Circulatory Autogen"
-    :default-name="store.lastExportName"
+    :default-name="builderStore.lastExportName"
     suffix=".zip"
   />
 </template>
 
 <script setup>
-import { computed, inject, nextTick, onMounted, ref } from "vue"
-import { ElNotification } from "element-plus"
-import { MarkerType, useVueFlow, VueFlow } from "@vue-flow/core"
-import { DCaret } from "@element-plus/icons-vue"
-import { Controls } from "@vue-flow/controls"
-import { MiniMap } from "@vue-flow/minimap"
-import Papa from "papaparse"
+import { computed, inject, nextTick, onMounted, ref } from 'vue'
+import { set, watchDebounced } from '@vueuse/core'
+import { ElNotification } from 'element-plus'
+import { MarkerType, useVueFlow, VueFlow } from '@vue-flow/core'
+import { DCaret } from '@element-plus/icons-vue'
+import { Controls } from '@vue-flow/controls'
+import { MiniMap } from '@vue-flow/minimap'
+import Papa from 'papaparse'
 
-import { useBuilderStore } from "./stores/builderStore"
-import ModuleList from "./components/ModuleList.vue"
-import Workbench from "./components/WorkbenchArea.vue"
-import ModuleNode from "./components/ModuleNode.vue"
-import useDragAndDrop from "./composables/useDnD"
-import EditModuleDialog from "./components/EditModuleDialog.vue"
-import SaveDialog from "./components/SaveDialog.vue"
-import { generateExportZip } from "./services/caExport"
+import { useBuilderStore } from './stores/builderStore'
+import { useFlowHistoryStore } from './stores/flowHistory'
+import ModuleList from './components/ModuleList.vue'
+import Workbench from './components/WorkbenchArea.vue'
+import ModuleNode from './components/ModuleNode.vue'
+import useDragAndDrop from './composables/useDnD'
+import EditModuleDialog from './components/EditModuleDialog.vue'
+import SaveDialog from './components/SaveDialog.vue'
+import { generateExportZip } from './services/caExport'
 
 const {
   addEdges,
+  addNodes,
+  applyNodeChanges,
+  applyEdgeChanges,
   edges,
+  findNode,
   fromObject,
   nodes,
   onConnect,
+  removeEdges,
+  removeNodes,
   setViewport,
   toObject,
   updateNodeData,
-  viewport,
 } = useVueFlow()
 
 const { onDragOver, onDrop, onDragLeave, isDragOver } = useDragAndDrop()
+const historyStore = useFlowHistoryStore()
 
-onConnect((connection) => {
-  // Match what we specify in connectionLineOptions.
-  const newEdge = {
-    ...connection,
-    type: "smoothstep",
-    markerEnd: MarkerType.ArrowClosed,
-  }
-
-  addEdges(newEdge)
-})
-
-import testModuleBGContent from "./assets/bg_modules.cellml?raw"
-import testModuleColonContent from "./assets/colon_FTU_modules.cellml?raw"
-import testParamertersCSV from "./assets/colon_FTU_parameters.csv?raw"
+import testModuleBGContent from './assets/bg_modules.cellml?raw'
+import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
+import testParamertersCSV from './assets/colon_FTU_parameters.csv?raw'
+import { el } from 'element-plus/es/locales.mjs'
 
 const testData = {
-  filename: "colon_FTU_modules.cellml",
+  filename: 'colon_FTU_modules.cellml',
   content: testModuleColonContent,
 }
 
-const store = useBuilderStore()
+const builderStore = useBuilderStore()
 
-const libcellmlReadyPromise = inject("$libcellml_ready")
-const libcellml = inject("$libcellml")
+const libcellmlReadyPromise = inject('$libcellml_ready')
+const libcellml = inject('$libcellml')
 const editDialogVisible = ref(false)
 const saveDialogVisible = ref(false)
 const exportDialogVisible = ref(false)
-const currentEditingNode = ref({ nodeId: "", ports: [], name: "" })
+const currentEditingNode = ref({ nodeId: '', ports: [], name: '' })
 const asideWidth = ref(250)
 const connectionLineOptions = ref({
-  type: "smoothstep",
+  type: 'smoothstep',
   markerEnd: MarkerType.ArrowClosed,
   style: {
     strokeWidth: 5,
@@ -196,8 +216,375 @@ const connectionLineOptions = ref({
 
 const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
 const exportAvailable = computed(
-  () => nodes.value.length > 0 && store.parameterData.length > 0
+  () => nodes.value.length > 0 && builderStore.parameterData.length > 0
 )
+
+let dragStartPos = { x: 0, y: 0 }
+
+const onNodeDragStart = (event) => {
+  // Store the initial position
+  dragStartPos = { ...event.node.position }
+}
+
+const onNodeDragStop = (event) => {
+  const node = event.node
+  const start = { ...dragStartPos }
+  const end = { ...node.position }
+
+  // Only add history if it actually moved
+  if (start.x !== end.x || start.y !== end.y) {
+    historyStore.addCommand({
+      redo: () => {
+        const n = findNode(node.id)
+        if (n) n.position = end
+      },
+      undo: () => {
+        const n = findNode(node.id)
+        if (n) n.position = start
+      },
+    })
+  }
+}
+
+onConnect((connection) => {
+  // Match what we specify in connectionLineOptions.
+  const newEdge = {
+    ...connection,
+    type: 'smoothstep',
+    markerEnd: MarkerType.ArrowClosed,
+  }
+
+  addEdges(newEdge)
+
+  // historyStore.addCommand({
+  //   redo: () => addEdges(connection),
+  //   undo: () => removeEdges(connection.id), // Vue Flow auto-generates IDs if not provided, ensure you handle IDs
+  // })
+})
+
+const movementBuffer = new Map()
+let movementTimeout = null
+const DEBOUNCE_MS = 500
+
+const extractNodeData = (node) => {
+  return {
+    id: node.id,
+    type: node.type,
+    position: { ...node.position },
+    data: { ...node.data },
+    selected: node.selected,
+  }
+}
+
+const snapshotNode = (change) => {
+  if (change.type === 'add') {
+    // For added nodes, snapshot is the node itself
+    return extractNodeData(change.item)
+  }
+
+  const node = findNode(change.id)
+  if (!node) return null
+
+  // Create a deep copy to break reactivity references
+  return extractNodeData(node)
+}
+
+/**
+ * Flushes pending movement changes to the history stack.
+ * We call this when the timer expires OR if a different event interrupts the drag.
+ */
+const flushPositionChanges = () => {
+  if (movementBuffer.size === 0) return
+
+  const undoSnapshots = []
+  const redoSnapshots = []
+
+  // 1. Build the snapshots
+  for (const [id, startSnapshot] of movementBuffer.entries()) {
+    const endSnapshot = snapshotNode(id)
+
+    // Only record if it actually moved
+    if (
+      endSnapshot &&
+      (startSnapshot.position.x !== endSnapshot.position.x ||
+        startSnapshot.position.y !== endSnapshot.position.y)
+    ) {
+      undoSnapshots.push(startSnapshot)
+      redoSnapshots.push(endSnapshot)
+    }
+  }
+
+  // 2. Create the Command
+  if (undoSnapshots.length > 0) {
+    historyStore.addCommand({
+      undo: () => {
+        // Restore all nodes in this batch to start positions
+        undoSnapshots.forEach((snap) => {
+          const node = findNode(snap.id)
+          if (node) node.position = snap.position
+        })
+      },
+      redo: () => {
+        // Restore all nodes in this batch to end positions
+        redoSnapshots.forEach((snap) => {
+          const node = findNode(snap.id)
+          if (node) node.position = snap.position
+        })
+      },
+    })
+  }
+
+  // 3. Reset
+  movementBuffer.clear()
+  movementTimeout = null
+}
+
+const processNonPositionBatch = (changes) => {
+  // We use a Map to track what happened to each node in this specific batch
+  const nodeActions = new Map()
+
+  changes.forEach((change) => {
+    if (!nodeActions.has(change.id)) {
+      nodeActions.set(change.id, { events: [] })
+    }
+    nodeActions.get(change.id).events.push(change)
+  })
+
+  // Now process per node
+  for (const [id, record] of nodeActions.entries()) {
+    const events = record.events
+
+    // Check if this batch contains an 'add' event
+    const addEvent = events.find((e) => e.type === 'add')
+    const removeEvent = events.find((e) => e.type === 'remove')
+
+    if (addEvent) {
+      // SCENARIO 1: ADD (+ maybe dimensions)
+      // The 'add' event usually carries the node data in `change.item`
+      // We essentially ignore the 'dimensions' event because the snapshot
+      // of the Added node should be sufficient.
+
+      const snap = snapshotNode(addEvent) // This uses your extractNodeData(change.item) logic
+
+      if (snap) {
+        historyStore.addCommand({
+          undo: () => removeNodes(snap.id),
+          redo: () => addNodes(snap),
+        })
+      }
+    } else if (removeEvent) {
+      // SCENARIO 2: REMOVE
+      const snap = snapshotNode(removeEvent) // This uses findNode + extract
+
+      if (snap) {
+        historyStore.addCommand({
+          undo: () => addNodes(snap),
+          redo: () => removeNodes(snap.id),
+        })
+      }
+    } else {
+      // SCENARIO 3: Other isolated events (like selection or independent dimension changes)
+      // If it's JUST dimensions without an Add, you might want to ignore it
+      // or track it depending on your needs.
+      events.forEach((e) => {
+        if (e.type === 'dimensions') {
+          // Generally, we DO NOT want to undo/redo dimension changes
+          // unless they are resizing a node manually.
+          // Vue Flow handles auto-sizing internally.
+          // Leaving this empty usually filters out the noise.
+        } else if (e.type === 'select') {
+          // Handle selection if you want
+        }
+      })
+    }
+  }
+}
+
+const onChange = (changes) => {
+  const positionChanges = []
+  const nonPositionChanges = []
+
+  changes.forEach((c) => {
+    if (c.type === 'position' && c.position) {
+      positionChanges.push(c)
+    } else {
+      nonPositionChanges.push(c)
+    }
+  })
+  // --- HANDLER A: Position Changes (Debounced) ---
+  if (positionChanges.length > 0) {
+    // Clear existing timer
+    if (movementTimeout) {
+      clearTimeout(movementTimeout)
+    }
+
+    // Capture the "Start" state if we haven't yet for this specific drag session
+    positionChanges.forEach((change) => {
+      if (!movementBuffer.has(change.id)) {
+        // We snapshot BEFORE the change is applied by Vue Flow logic?
+        // Actually, onNodesChange fires BEFORE changes are applied.
+        // So findNode currently returns the OLD position. Perfect.
+        const snap = snapshotNode(change.id)
+        if (snap) movementBuffer.set(change.id, snap)
+      }
+    })
+
+    // Set a timer to finalize the move if no more events come in
+    movementTimeout = setTimeout(flushPositionChanges, DEBOUNCE_MS)
+  }
+
+  // --- HANDLER B: Other Changes (Immediate) ---
+  if (nonPositionChanges.length > 0) {
+    // CRITICAL: If we were dragging and suddenly deleted the node (or did something else),
+    // we must flush the drag history FIRST so the sequence is correct.
+    if (movementTimeout) {
+      clearTimeout(movementTimeout)
+      flushPositionChanges()
+    }
+
+    processNonPositionBatch(nonPositionChanges)
+  }
+
+  // Finally, let Vue Flow update the graph
+  applyNodeChanges(changes)
+}
+
+let lastNodeChangeType = null
+const onNodesChange = (changes) => {
+  const changeTypes = new Set()
+  // console.log('Node change types in batch:', Array.from(changeTypes))
+
+  const affectedNodes = []
+  changes.forEach((change) => {
+    console.log('Node change:', change.type, change)
+    console.log(change.item)
+    changeTypes.add(change.type)
+    affectedNodes.push(snapshotNode(change))
+  })
+
+  //   }
+  //   // 1. Handle Removal
+  //   if (change.type !== lastNodeChangeType) {
+  //     console.log('Node change:', change.type, changes.length)
+  //     lastNodeChangeType = change.type
+  //   }
+  //   if (change.type === 'remove') {
+  //     const node = findNode(change.id)
+  //     // Only track if node exists (it might be already gone)
+  //     if (node) {
+  //       // CRITICAL: Create a generic object copy, stripping internal Vue Flow refs
+  //       // We manually copy properties we care about to avoid DataCloneError
+  //       const nodeSnapshot = {
+  //         id: node.id,
+  //         type: node.type,
+  //         position: { ...node.position },
+  //         data: { ...node.data }, // Ensure your data is clean!
+  //       }
+
+  //       historyStore.addCommand({
+  //         redo: () => removeNodes(nodeSnapshot.id),
+  //         undo: () => addNodes(nodeSnapshot),
+  //       })
+  //     }
+  //     nextChanges.push(change)
+  //   }
+  //   // 2. Handle Selection / Dimensions (Ignored by History)
+  //   else {
+  //     nextChanges.push(change)
+  //   }
+  // })
+
+  // if (changeTypes.length > 1) {
+  //   console.log('Multiple node change types in batch:', Array.from(changeTypes))
+  // } else {
+  //   const currentNodeChangeType = Array.from(changeTypes)[0]
+  //   if (
+  //     currentNodeChangeType === 'dimensions' &&
+  //     lastNodeChangeType === 'add'
+  //   ) {
+  //     // Ignore dimensions changes that immediately follow an add.
+  //     return applyNodeChanges(changes)
+  //   }
+  //   if (currentNodeChangeType === 'dimensions') {
+  //     // Ignore dimension changes for history.
+  //     return applyNodeChanges(changes)
+  //   } else if (currentNodeChangeType === 'select') {
+  //     // Ignore selection changes for history.
+  //     console.log(changes)
+  //     return applyNodeChanges(changes)
+  //   } else if (currentNodeChangeType === 'position') {
+  //     // Handle position changes as a batch.
+  //     changes.forEach(({ change, nodeSnapshot }) => {
+  //       const startPos = { ...nodeSnapshot.position }
+  //       const node = findNode(change.id)
+  //       if (!node) return
+  //       const endPos = { ...node.position }
+
+  //       // Only add history if it actually moved
+  //       if (startPos.x !== endPos.x || startPos.y !== endPos.y) {
+  //         historyStore.addCommand({
+  //           redo: () => {
+  //             const n = findNode(node.id)
+  //             if (n) n.position = endPos
+  //           },
+  //           undo: () => {
+  //             const n = findNode(node.id)
+  //             if (n) n.position = startPos
+  //           },
+  //         })
+  //       }
+  //     })
+  //   } else if (currentNodeChangeType === 'remove') {
+  //     // Handle removals as a batch.
+  //     console.log('remove changes', changes)
+  //     historyStore.addCommand({
+  //       redo: () => removeNodes(changes.map((n) => n.id)),
+  //       undo: () => addNodes(changes),
+  //     })
+  //   } else if (currentNodeChangeType === 'add') {
+  //     // Handle additions as a batch.
+  //     console.log('add changes', changes)
+  //     console.log('next changes', nextChanges)
+  //     const now = nextChanges.map((n) => n.id)
+  //     console.log('now', now)
+  //     historyStore.addCommand({
+  //       redo: () => addNodes(nextChanges),
+  //       undo: () => removeNodes(now),
+  //     })
+  //   }
+
+  //   console.log('Node change:', currentNodeChangeType, changes.length)
+  //   lastNodeChangeType = currentNodeChangeType
+  // }
+
+  applyNodeChanges(changes)
+}
+
+let lastEdgeChangeType = null
+const onEdgesChange = (changes) => {
+  const nextChanges = []
+  changes.forEach((change) => {
+    if (change.type === 'remove') {
+      // Note: Finding edges by ID is harder in generic Vue Flow if you don't store them
+      // But usually `changes` contains the ID.
+      // You might need `findEdge` logic or access `edges.value` directly.
+      const edge = edges.value.find((e) => e.id === change.id)
+
+      console.log('Edge removed:', change.id, edge)
+      if (edge) {
+        const edgeSnapshot = { ...edge } // Shallow copy usually enough for edges
+        historyStore.addCommand({
+          redo: () => removeEdges(edgeSnapshot.id),
+          undo: () => addEdges(edgeSnapshot),
+        })
+      }
+      nextChanges.push(change)
+    } else {
+      nextChanges.push(change)
+    }
+  })
+  applyEdgeChanges(nextChanges)
+}
 
 function onOpenEditDialog(eventPayload) {
   currentEditingNode.value = {
@@ -227,10 +614,10 @@ function processModuleData(cellmlString, fileName) {
     return {
       issues: [
         {
-          description: "Failed to parse model.  Reason:" + err.message,
+          description: 'Failed to parse model.  Reason:' + err.message,
         },
       ],
-      type: "parser",
+      type: 'parser',
     }
   }
 
@@ -249,7 +636,7 @@ function processModuleData(cellmlString, fileName) {
     printer.delete()
     model.delete()
 
-    return { issues: errors, type: "parser" }
+    return { issues: errors, type: 'parser' }
   }
 
   parser.delete()
@@ -285,7 +672,7 @@ function processModuleData(cellmlString, fileName) {
   // store.setAvailableModules(data)
 
   model.delete()
-  return { type: "success", data }
+  return { type: 'success', data }
 }
 
 const handleModuleFile = (file) => {
@@ -295,36 +682,36 @@ const handleModuleFile = (file) => {
     try {
       try {
         const result = processModuleData(e.target.result, filename)
-        if (result.type !== "success") {
+        if (result.type !== 'success') {
           if (result.issues) {
             ElNotification({
-              title: "Error",
+              title: 'Error',
               message: `${result.issues.length} issues found in model file.`,
-              type: "error",
+              type: 'error',
             })
-            console.error("Model import issues:", result.issues)
+            console.error('Model import issues:', result.issues)
           }
           return
         }
-        store.addModuleFile({
+        builderStore.addModuleFile({
           filename: filename,
           modules: result.data,
         })
       } catch (err) {
-        console.error("Error parsing file:", err)
+        console.error('Error parsing file:', err)
         ElNotification({
-          title: "Error",
-          message: "Failed to parse module file as CellML.",
-          type: "error",
+          title: 'Error',
+          message: 'Failed to parse module file as CellML.',
+          type: 'error',
         })
         return
       }
     } catch (error) {
-      console.error("Error parsing module file:", error)
+      console.error('Error parsing module file:', error)
       ElNotification({
-        title: "Error",
-        message: "An error occurred while processing the module file.",
-        type: "error",
+        title: 'Error',
+        message: 'An error occurred while processing the module file.',
+        type: 'error',
       })
     }
   }
@@ -333,7 +720,7 @@ const handleModuleFile = (file) => {
 
 const handleParametersFile = (file) => {
   if (!file) {
-    ElNotification.error("No file selected.")
+    ElNotification.error('No file selected.')
     return
   }
 
@@ -344,10 +731,10 @@ const handleParametersFile = (file) => {
     complete: (results) => {
       // results.data will be an array of objects
       // e.g., [{ param_name: 'a', value: '1' }, { param_name: 'b', value: '2' }]
-      store.setParameterData(results.data)
+      builderStore.setParameterData(results.data)
 
       ElNotification.success({
-        title: "Parameters Loaded",
+        title: 'Parameters Loaded',
         message: `Loaded ${results.data.length} parameters from ${file.name}.`,
         offset: 50,
       })
@@ -355,7 +742,7 @@ const handleParametersFile = (file) => {
 
     error: (err) => {
       ElNotification.error({
-        title: "CSV Parse Error",
+        title: 'CSV Parse Error',
         message: err.message,
       })
     },
@@ -375,9 +762,9 @@ function handleExport() {
  */
 async function onExportConfirm(fileName) {
   const notification = ElNotification({
-    title: "Exporting...",
-    message: "Generating and zipping files.",
-    type: "info",
+    title: 'Exporting...',
+    message: 'Generating and zipping files.',
+    type: 'info',
     duration: 0, // Stays open until closed
   })
 
@@ -386,20 +773,20 @@ async function onExportConfirm(fileName) {
       fileName,
       nodes.value,
       edges.value,
-      store.parameterData
+      builderStore.parameterData
     )
 
     if (!import.meta.env.DEVOFF) {
-      const link = document.createElement("a")
+      const link = document.createElement('a')
       link.href = URL.createObjectURL(zipBlob)
       link.download = `${fileName}.zip`
       link.click()
 
       URL.revokeObjectURL(link.href)
     }
-    store.setLastExportName(fileName)
+    builderStore.setLastExportName(fileName)
     notification.close()
-    ElNotification.success({ message: "Export successful!", offset: 50 })
+    ElNotification.success({ message: 'Export successful!', offset: 50 })
   } catch (error) {
     notification.close()
     ElNotification.error(`Export failed: ${error.message}`)
@@ -411,7 +798,7 @@ async function onExportConfirm(fileName) {
  */
 function onSaveConfirm(fileName) {
   // Ensure the filename ends with .json
-  const finalName = fileName.endsWith(".json") ? fileName : `${fileName}.json`
+  const finalName = fileName.endsWith('.json') ? fileName : `${fileName}.json`
 
   const saveState = {
     flow: toObject(),
@@ -421,29 +808,29 @@ function onSaveConfirm(fileName) {
     //   viewport: viewport.value,
     // },
     store: {
-      availableModules: store.availableModules,
-      parameterData: store.parameterData,
+      availableModules: builderStore.availableModules,
+      parameterData: builderStore.parameterData,
     },
   }
 
   const jsonString = JSON.stringify(saveState, null, 2)
-  const blob = new Blob([jsonString], { type: "application/json" })
+  const blob = new Blob([jsonString], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
 
-  const link = document.createElement("a")
+  const link = document.createElement('a')
   link.href = url
   link.download = finalName
   link.click()
 
   URL.revokeObjectURL(url)
 
-  store.setLastSaveName(fileName)
-  ElNotification.success({ message: "Workflow saved!", offset: 50 })
+  builderStore.setLastSaveName(fileName)
+  ElNotification.success({ message: 'Workflow saved!', offset: 50 })
 }
 
 function mergeModules(newModules) {
   const moduleMap = new Map(
-    store.availableModules.map((mod) => [mod.filename, mod])
+    builderStore.availableModules.map((mod) => [mod.filename, mod])
   )
 
   if (newModules) {
@@ -455,7 +842,7 @@ function mergeModules(newModules) {
     }
   }
 
-  store.availableModules = Array.from(moduleMap.values())
+  builderStore.availableModules = Array.from(moduleMap.values())
 }
 /**
  * Reads a JSON file and restores the application state.
@@ -469,7 +856,7 @@ function handleLoadWorkflow(file) {
 
       // Validate the loaded file
       if (!loadedState.flow || !loadedState.store) {
-        throw new Error("Invalid workflow file format.")
+        throw new Error('Invalid workflow file format.')
       }
 
       // Clear the current Vue Flow state.
@@ -477,7 +864,7 @@ function handleLoadWorkflow(file) {
       edges.value = []
       setViewport({ x: 0, y: 0, zoom: 1 }) // Reset viewport.
       // Clear the current parameter data.
-      store.parameterData = []
+      builderStore.parameterData = []
 
       await nextTick()
 
@@ -490,12 +877,12 @@ function handleLoadWorkflow(file) {
       // edges.value = loadedState.flow.edges
 
       // Restore Pinia store state.
-      store.parameterData = loadedState.store.parameterData
+      builderStore.parameterData = loadedState.store.parameterData
       // Merge available modules.
       mergeModules(loadedState.store.availableModules)
 
       ElNotification.success({
-        message: "Workflow loaded successfully!",
+        message: 'Workflow loaded successfully!',
         offset: 50,
       })
     } catch (error) {
@@ -504,6 +891,21 @@ function handleLoadWorkflow(file) {
   }
 
   reader.readAsText(file.raw)
+}
+
+const handleUndo = () => {
+  historyStore.undo((restoredNodes, restoredEdges) => {
+    // We must replace the array values, not the refs themselves
+    nodes.value = structuredClone(restoredNodes)
+    edges.value = structuredClone(restoredEdges)
+  })
+}
+
+const handleRedo = () => {
+  historyStore.redo((restoredNodes, restoredEdges) => {
+    nodes.value = structuredClone(restoredNodes)
+    edges.value = structuredClone(restoredEdges)
+  })
 }
 
 const finiteTranslateExtent = [
@@ -522,10 +924,10 @@ const onResizing = (event) => {
 
 // This function removes the global listeners
 const stopResize = () => {
-  window.removeEventListener("mousemove", onResizing)
-  window.removeEventListener("mouseup", stopResize)
+  window.removeEventListener('mousemove', onResizing)
+  window.removeEventListener('mouseup', stopResize)
   // Re-enable text selection
-  document.body.style.userSelect = ""
+  document.body.style.userSelect = ''
 }
 
 // This function is called on mousedown
@@ -533,10 +935,10 @@ const startResize = (event) => {
   event.preventDefault()
 
   // Add the listeners to the entire window
-  window.addEventListener("mousemove", onResizing)
-  window.addEventListener("mouseup", stopResize)
+  window.addEventListener('mousemove', onResizing)
+  window.addEventListener('mouseup', stopResize)
   // Disable text selection globally while dragging
-  document.body.style.userSelect = "none"
+  document.body.style.userSelect = 'none'
 }
 
 // --- Development Test Data ---
@@ -547,10 +949,10 @@ onMounted(async () => {
     await libcellmlReadyPromise
     handleParametersFile({ raw: testParamertersCSV })
     const result = processModuleData(testData.content, testData.filename)
-    if (result.type !== "success") {
-      throw new Error("Failed to process test module file.")
+    if (result.type !== 'success') {
+      throw new Error('Failed to process test module file.')
     } else {
-      store.addModuleFile({
+      builderStore.addModuleFile({
         filename: testData.filename,
         modules: result.data,
       })
@@ -563,7 +965,7 @@ onMounted(async () => {
 /* Basic Styles */
 body {
   margin: 0;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 .app-header {
