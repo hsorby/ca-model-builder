@@ -87,6 +87,7 @@ function handleConfirm() {
     componentName: selectedModule.value.componentName,
     sourceFile: selectedModule.value.sourceFile,
     portLabels: finalPortLabels,
+    portOptions: moduleVariables
   })
 
   closeDialog()
