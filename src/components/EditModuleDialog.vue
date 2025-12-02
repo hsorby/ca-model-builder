@@ -193,7 +193,7 @@ function isOptionDisabled(optionName, currentSelection) {
 }
 
 function addPortLabel() {
-  editableData.portLabels.push({ option: "", label: "" })
+  editableData.portLabels.push({ option: "", label: "", isMultiPortSum: false })
 }
 
 function deletePortLabel(index) {
