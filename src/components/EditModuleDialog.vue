@@ -21,7 +21,12 @@
       <el-divider />
 
       <label class="el-form-label">Port Labels:</label>
-
+      <div v-if="editableData.portLabels.length>0" class="port-header-row">
+        <span class="port-label-header">Label</span>
+        <span class="port-select-header">Option</span>
+        <span class="port-checkbox-header">Sum?</span>
+        <span class="port-action-header"></span>
+      </div>
       <div
         v-for="(port, index) in editableData.portLabels"
         :key="index"
@@ -46,7 +51,9 @@
             :disabled="isOptionDisabled(optionObj.name, port.option)"
           />
         </el-select>
-
+        <div class="port-checkbox">
+          <el-checkbox v-model="isMultiportSum"></el-checkbox>  
+        </div>
         <el-button
           type="danger"
           :icon="Delete"
@@ -204,17 +211,38 @@ function deletePortLabel(index) {
   margin-bottom: 8px;
   display: block;
 }
+.port-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-weight: bold;
+  font-size: 14px;
+}
 .port-label-row {
   display: flex;
   gap: 10px;
   align-items: center;
   margin-bottom: 10px;
 }
-.port-select {
-  flex: 1;
-}
+.port-label-header,
 .port-label {
   flex: 1;
+  min-width: 150px;
+}
+.port-select-header,
+.port-select {
+  flex: 1;
+  min-width: 150px;
+}
+.port-checkbox-header,
+.port-checkbox {
+  width: 50px;
+  text-align: center;
+  align-items: center;
+}
+.port-action-header {
+  width: 40px;
 }
 .add-button {
   margin-top: 10px;
