@@ -52,7 +52,7 @@
           />
         </el-select>
         <div class="port-checkbox">
-          <el-checkbox v-model="isMultiportSum"></el-checkbox>  
+          <el-checkbox v-model="port.isMultiPortSum"></el-checkbox>  
         </div>
         <el-button
           type="danger"
