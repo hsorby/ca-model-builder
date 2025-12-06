@@ -26,6 +26,18 @@
             </el-button>
           </el-upload>
 
+          <el-upload
+            action="#"
+            :auto-upload="false"
+            :on-change="handleVesselArrayFile"
+            :show-file-list="false"
+            style="margin-left: 10px"
+          >
+            <el-button :disabled="libcellml.status !== 'ready'" type="primary">
+              Load Vessel Array
+            </el-button>
+          </el-upload>
+
           <el-divider direction="vertical" style="margin: 0 15px" />
 
           <el-upload
@@ -360,6 +372,32 @@ const handleParametersFile = (file) => {
       })
     },
   })
+}
+
+const handleVesselArrayFile = (file) => {
+  if (!file) {
+    ElNotification.error("No file selected.")
+    return
+  }
+
+  Papa.parse(file.raw, {
+  header: true, // Converts row 1 to object keys
+  skipEmptyLines: true,
+
+  complete: (results) => {
+    // results.data will be an array of objects
+    // e.g., [{ module_name: 'a', BC_type: 'nn', vessel_type: 'a', inp_vessels: '' }, { param_name: 'b', value: '2' }]
+
+    console.log("Vessel Array Data:", results.data)
+  },
+
+  error: (err) => {
+    ElNotification.error({
+      title: "CSV Parse Error",
+      message: err.message,
+    })
+  },
+})
 }
 
 function handleSaveWorkflow() {
