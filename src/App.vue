@@ -385,10 +385,28 @@ const handleVesselArrayFile = (file) => {
   skipEmptyLines: true,
 
   complete: (results) => {
-    // results.data will be an array of objects
-    // e.g., [{ module_name: 'a', BC_type: 'nn', vessel_type: 'a', inp_vessels: '' }, { param_name: 'b', value: '2' }]
+    try{
+      // results.data will be an array of objects
+      // e.g., [{ name: 'a', BC_type: 'nn', vessel_type: 'a', inp_vessels: space separated list, out_vessels: space separated list }, { object 2 }]
+      console.log("Vessel Array Data:", results.data)
 
-    console.log("Vessel Array Data:", results.data)
+      // Error handle - confirm that the file loaded has the required columns (i.e., is a valid vessel array file)
+      if (!(results.data.length > 0 &&
+        "name" in results.data[0] &&
+        "BC_type" in results.data[0] &&
+        "vessel_type" in results.data[0] &&
+        "inp_vessels" in results.data[0] &&
+        "out_vessels" in results.data[0])
+      ) {
+        throw new Error("Invalid vessel array file format.")
+      } 
+
+      // check that the required modules are present in the module list
+      console.log("Available Modules:", store.availableModules)
+    } catch (error) {
+      ElNotification.error(error.message)
+    }
+
   },
 
   error: (err) => {
