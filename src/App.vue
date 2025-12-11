@@ -83,7 +83,7 @@
               :zoomable="true"
             />
             <Controls>
-              <ControlButton title="PNG Screenshot" @click="doPNGscreenshot">
+              <ControlButton title="PNG Screenshot" @click="doPngScreenshot">
                 <CameraFilled />
               </ControlButton>
             </Controls>
@@ -547,7 +547,7 @@ const startResize = (event) => {
 const { vueFlowRef } = useVueFlow();
 const { capture } = useScreenshot();
 
-function doPNGscreenshot() {
+function doPngScreenshot() {
   if(!vueFlowRef.value) {
     ElNotification.error("VueFlow element not found.")
     return;
