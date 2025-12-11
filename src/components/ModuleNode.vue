@@ -7,7 +7,7 @@
     @contextmenu.stop.prevent="openContextMenu"
     @mousedown.capture="StopDrag"
   >
-    <NodeResizer min-width="180" min-height="75" :is-visible="selected" />
+    <NodeResizer min-width="180" min-height="105" :is-visible="selected" />
 
     <el-card :class="[domainTypeClass, 'module-card']" shadow="hover">
       <div class="module-name" @dblclick="startEditing">
