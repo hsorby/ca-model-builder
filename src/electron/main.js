@@ -76,7 +76,7 @@ app.whenReady().then(() => {
       callback({ responseHeaders: details.responseHeaders })
     }
   })
-  
+
   createWindow()
 })
 

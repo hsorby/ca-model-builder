@@ -93,6 +93,8 @@
                 :data="props.data"
                 :selected="props.selected"
                 @open-edit-dialog="onOpenEditDialog"
+                @open-replacement-dialog="onOpenReplacementDialog"
+                :ref="el => (nodeRefs[props.id] = el)"
               />
             </template>
             <Workbench>
@@ -119,12 +121,22 @@
     @confirm="onSaveConfirm"
     :default-name="store.lastSaveName"
   />
+
   <SaveDialog
     v-model="exportDialogVisible"
     @confirm="onExportConfirm"
     title="Export for Circulatory Autogen"
     :default-name="store.lastExportName"
     suffix=".zip"
+  />
+
+  <ModuleReplacementDialog
+    v-model="replacementDialogVisible"
+    :modules="store.availableModules"
+    :node-id="currentEditingNode.nodeId"
+    :port-options="currentEditingNode?.portOptions || []"
+    :port-labels="currentEditingNode?.portLabels || []"
+    @confirm="onReplaceConfirm"
   />
 </template>
 
@@ -143,6 +155,7 @@ import Workbench from "./components/WorkbenchArea.vue"
 import ModuleNode from "./components/ModuleNode.vue"
 import useDragAndDrop from "./composables/useDnD"
 import EditModuleDialog from "./components/EditModuleDialog.vue"
+import ModuleReplacementDialog from "./components/ModuleReplacementDialog.vue"  
 import SaveDialog from "./components/SaveDialog.vue"
 import { useScreenshot } from "./services/useScreenshot"
 import { generateExportZip } from "./services/caExport"
@@ -188,6 +201,7 @@ const libcellml = inject("$libcellml")
 const editDialogVisible = ref(false)
 const saveDialogVisible = ref(false)
 const exportDialogVisible = ref(false)
+const replacementDialogVisible = ref(false)
 const currentEditingNode = ref({ nodeId: "", ports: [], name: "" })
 const asideWidth = ref(250)
 const connectionLineOptions = ref({
@@ -365,6 +379,27 @@ const handleParametersFile = (file) => {
       })
     },
   })
+}
+
+const nodeRefs = ref({})
+
+function onOpenReplacementDialog(eventPayload) {
+  currentEditingNode.value = {
+    ...eventPayload,
+  }
+  replacementDialogVisible.value = true
+}
+
+async function onReplaceConfirm(updatedData){
+  const nodeId = currentEditingNode.value.nodeId
+  if (!nodeId) return
+  const compLabel = updatedData.componentName
+  const filePart = updatedData.sourceFile
+  const label = filePart ? `${compLabel} — ${filePart}` : compLabel
+
+  updatedData.label = label
+  updateNodeData(nodeId, updatedData)
+  replacementDialogVisible.value = false
 }
 
 function handleSaveWorkflow() {
@@ -574,6 +609,7 @@ onMounted(async () => {
     }
   }
 })
+
 </script>
 
 <style>
