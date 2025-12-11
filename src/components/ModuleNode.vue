@@ -68,7 +68,7 @@
       </div>
     </el-card>
 
-    <template v-for="(port, index) in data.ports" :key="port.name" class="port">
+    <template v-for="port in data.ports" :key="port.uid" class="port">
       <el-tooltip
         class="box-item"
         effect="dark"
@@ -77,11 +77,11 @@
         :show-after="1000"
       >
         <Handle
-          :id="'port_' + port.type + '_' + index"
-          :ref="'handle_' + port.type + '_' + index"
+          :id="'port_' + port.type + '_' + port.uid"
+          :ref="'handle_' + port.type + '_' + port.uid"
           type="source"
           :position="portPosition(port.type)"
-          :style="getHandleStyle(index, port)"
+          :style="getHandleStyle(port)"
           class="port-handle"
         />
         <template #content>
@@ -92,7 +92,7 @@
             circle
             plain
             size="small"
-            @click.stop="removePort(index)"
+            @click.stop="removePort(port.uid)"
           />
         </template>
       </el-tooltip>
@@ -118,9 +118,10 @@
 import { computed, nextTick, ref, useId, onBeforeUnmount, onMounted } from "vue"
 import { Handle, Position, useVueFlow } from "@vue-flow/core"
 import { NodeResizer } from "@vue-flow/node-resizer"
-import { Delete, Edit, Key, Place, Plus } from "@element-plus/icons-vue"
+import { Delete, Edit, Key, Place } from "@element-plus/icons-vue"
+import { filter } from "jszip"
 
-const { updateNodeData, updateNodeInternals } = useVueFlow()
+const { updateNodeData, updateNodeInternals, setEdges } = useVueFlow()
 
 const props = defineProps({
   data: {
@@ -139,7 +140,6 @@ const props = defineProps({
 
 const emit = defineEmits(["open-edit-dialog", "open-replacement-dialog"])
 
-const id = useId()
 const moduleNode = ref(null)
 
 async function openEditDialog() {
@@ -178,30 +178,16 @@ function handleSetDomainType(typeCommand) {
   updateNodeData(props.id, { domainType: newType })
 }
 
-function portCount(aspect) {
-  return props.data.ports.filter((p) => p.type === aspect).length
-}
+function getHandleStyle(port) {
+  const portsOfSameType = props.data.ports.filter(p => p.type === port.type)
+  const n = portsOfSameType.length
 
-function getPositionIndex(fullList, globalIndex) {
-  const targetPosition = fullList[globalIndex].type
-  let positionIndex = -1
-
-  for (let i = 0; i <= globalIndex; i++) {
-    const currentObject = fullList[i]
-
-    if (currentObject.type === targetPosition) {
-      positionIndex++
-    }
-  }
-
-  return positionIndex
-}
-
-function getHandleStyle(index, port) {
-  const n = portCount(port.type)
   // Space between each port.
   const portSpacing = 16
-  const positionIndex = getPositionIndex(props.data.ports, index)
+  const positionIndex = portsOfSameType.findIndex(p => p.uid === port.uid)
+
+  // guard: if not found, fall back to 0
+  const safeIndex = positionIndex === -1 ? 0 : positionIndex
 
   // This calculates the offset from the center
   const offset = portSpacing * (positionIndex - (n - 1) / 2)
@@ -219,12 +205,21 @@ function getHandleStyle(index, port) {
   }
 }
 
-async function removePort(indexToRemove) {
+async function removePort(portIdToRemove) {
+  const port = props.data.ports.find(p => p.uid === portIdToRemove)
+  if (!port) return
+
+  const handleId = `port_${port.type}_${port.uid}`
+
+  // Remove edges connected to this port
+  setEdges(prevEdges =>
+    prevEdges.filter(edge => edge.sourceHandle !== handleId && edge.targetHandle !== handleId)
+  )
+
   // Create a new array filtering out the port we want to remove
-  const newPortsArray = props.data.ports.filter((port, index) => {
-    // Keep the port only if its index does NOT match indexToRemove
-    return index !== indexToRemove
-  })
+  const newPortsArray = props.data.ports.filter(
+    port => port.uid !== portIdToRemove
+  );
 
   // Update the node's data
   updateNodeData(props.id, { ports: newPortsArray })
@@ -237,8 +232,14 @@ async function removePort(indexToRemove) {
 }
 
 const addPort = async (portToAdd) => {
+  // create stable node id
+  const newPort = {
+    ...portToAdd,
+    uid: crypto.randomUUID()
+  }
+
   // Create a new array with the old ports + the new one
-  const newPortsArray = [...props.data.ports, portToAdd]
+  const newPortsArray = [...props.data.ports, newPort]
 
   // Tell Vue Flow to update this node's data
   // This will cause the component to re-render
