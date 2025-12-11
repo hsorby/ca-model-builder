@@ -25,7 +25,7 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
   /**
    * Start collecting commands into a temporary bucket
    */
-  function startBatch() {
+  function beginBatch() {
     isBatching.value = true
     activeBatch.value = []
   }
@@ -41,7 +41,7 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
   /**
    * Stop collecting commands and save the bucket as ONE history entry
    */
-  function commitBatch() {
+  function endBatch() {
     isBatching.value = false
     if (working.value) {
       activeBatch.value = []
@@ -146,10 +146,11 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
 
   return {
     addCommand,
+    beginBatch,
     cancelBatch,
     canRedo,
     canUndo,
-    commitBatch,
+    endBatch,
     isUndoRedoing,
     lastChangeWasAdd,
     lastChangeWasAddSetter,
@@ -157,7 +158,6 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
     pointerIndex,
     redo,
     replaceLastCommand,
-    startBatch,
     undo,
   }
 })

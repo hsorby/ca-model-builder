@@ -171,6 +171,7 @@ const {
   applyNodeChanges,
   applyEdgeChanges,
   edges,
+  findEdge,
   findNode,
   fromObject,
   nodes,
@@ -191,7 +192,7 @@ const historyStore = useFlowHistoryStore()
 import testModuleBGContent from './assets/bg_modules.cellml?raw'
 import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
 import testParamertersCSV from './assets/colon_FTU_parameters.csv?raw'
-import { no } from 'element-plus/es/locales.mjs'
+import { hi, no } from 'element-plus/es/locales.mjs'
 
 const testData = {
   filename: 'colon_FTU_modules.cellml',
@@ -254,6 +255,22 @@ const movementBuffer = new Map()
 let movementTimeout = null
 const DEBOUNCE_MS = 500
 
+const extractEdgeData = (edge) => {
+  return {
+    id: edge.id,
+    markerEnd: edge.markerEnd,
+    source: edge.source,
+    target: edge.target,
+    sourceHandle: edge.sourceHandle,
+    sourceNode: edge.sourceNode,
+    targetHandle: edge.targetHandle,
+    targetNode: edge.targetNode,
+    type: edge.type,
+    data: { ...edge.data },
+    selected: edge.selected,
+  }
+}
+
 const extractNodeData = (node) => {
   return {
     id: node.id,
@@ -263,6 +280,18 @@ const extractNodeData = (node) => {
     dimensions: { ...node.dimensions },
     selected: node.selected,
   }
+}
+
+const snapshotEdge = (change) => {
+  if (change.type === 'add') {
+    return extractEdgeData(change.item)
+  }
+
+  const edge = findEdge(change.id)
+  if (!edge) return null
+
+  // Create a deep copy to break reactivity references
+  return extractEdgeData(edge)
 }
 
 const snapshotNode = (change) => {
@@ -367,9 +396,16 @@ const processSingleChange = (change) => {
 }
 
 const processNonDebouncableChanges = (changes) => {
-  if (changes.length === 1) {
-    const change = changes[0]
+  if (changes.length > 1) {
+    historyStore.beginBatch()
+  }
+
+  changes.forEach((change) => {
     processSingleChange(change)
+  })
+
+  if (changes.length > 1) {
+    historyStore.endBatch()
   }
 }
 
@@ -450,29 +486,45 @@ const onNodeChange = (changes) => {
   applyNodeChanges(changes)
 }
 
-let lastEdgeChangeType = null
 const onEdgeChange = (changes) => {
+  if (historyStore.isUndoRedoing) {
+    // If we are currently undoing/redoing, bypass history tracking
+    return applyEdgeChanges(changes)
+  }
+
+  if (changes.length > 0) {
+    historyStore.beginBatch()
+  }
+
   const nextChanges = []
   changes.forEach((change) => {
     console.log('Edge change:', change.type, change)
     if (change.type === 'remove') {
-      // Note: Finding edges by ID is harder in generic Vue Flow if you don't store them
-      // But usually `changes` contains the ID.
-      // You might need `findEdge` logic or access `edges.value` directly.
-      const edge = edges.value.find((e) => e.id === change.id)
-
-      if (edge) {
-        const edgeSnapshot = { ...edge } // Shallow copy usually enough for edges
+      const edgeSnapshot = findEdge(change.id)
+      if (edgeSnapshot) {
         historyStore.addCommand({
           redo: () => removeEdges(edgeSnapshot.id),
           undo: () => addEdges(edgeSnapshot),
         })
       }
       nextChanges.push(change)
+    } else if (change.type === 'add') {
+      const edgeSnapshot = snapshotEdge(change)
+      console.log('Edge snapshot for add:', edgeSnapshot)
+      historyStore.addCommand({
+        redo: () => addEdges(edgeSnapshot),
+        undo: () => removeEdges(edgeSnapshot.id),
+      })
+      console.log('done')
     } else {
       nextChanges.push(change)
     }
   })
+
+  if (changes.length > 0) {
+    historyStore.endBatch()
+  }
+
   applyEdgeChanges(nextChanges)
 }
 
