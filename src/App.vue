@@ -83,7 +83,10 @@
               :zoomable="true"
             />
             <Controls>
-              <ControlButton title="PNG Screenshot" @click="doPngScreenshot">
+              <ControlButton 
+                :disabled="screenshotDisabled" 
+                title="PNG Screenshot" 
+                @click="doPngScreenshot">
                 <CameraFilled />
               </ControlButton>
             </Controls>
@@ -200,8 +203,13 @@ const connectionLineOptions = ref({
 })
 
 const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
+
 const exportAvailable = computed(
   () => nodes.value.length > 0 && store.parameterData.length > 0
+)
+
+const screenshotDisabled = computed(
+  () => nodes.value.length == 0
 )
 
 function onOpenEditDialog(eventPayload) {
@@ -548,11 +556,6 @@ const { vueFlowRef } = useVueFlow();
 const { capture } = useScreenshot();
 
 function doPngScreenshot() {
-  if(!vueFlowRef.value) {
-    ElNotification.error("VueFlow element not found.")
-    return;
-  }
-
   capture(vueFlowRef.value, { shouldDownload: true});
 }
 
