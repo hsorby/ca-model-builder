@@ -18,9 +18,11 @@
           v-for="module in file.modules"
           :key="module.name"
           class="module-card"
+          :class="{ selectable: selectable }"
           shadow="hover"
-          :draggable="true"
-          @dragstart="onDragStart($event, module)"
+          :draggable="!selectable"
+          @dragstart="!selectable && onDragStart($event, module)"
+          @click="selectable && handleSelect(module)"
         >
           <div class="module-name">{{ module.name }}</div>
         </el-card>
@@ -43,6 +45,18 @@
 import { computed, ref, watch } from "vue"
 import { useBuilderStore } from "../stores/builderStore"
 import useDragAndDrop from "../composables/useDnD"
+
+// Lets you optionally make the list selectable (used by ModuleReplacementDialog)
+const props = defineProps({
+  selectable: {
+    type: Boolean,
+    default: false
+  },
+})
+
+const emit = defineEmits([
+  "select"
+])
 
 const store = useBuilderStore()
 const { onDragStart } = useDragAndDrop()
@@ -101,6 +115,12 @@ watch(
     // immediate: true,
   }
 )
+
+function handleSelect(module) {
+  if (props.selectable) {
+    emit("select", module)
+  }
+}
 </script>
 
 <style scoped>
@@ -151,6 +171,10 @@ watch(
   cursor: grab;
   user-select: none; /* Prevent text selection while dragging */
   flex-shrink: 0;
+}
+
+.module-card.selectable {
+  cursor: pointer;
 }
 
 .module-name {
