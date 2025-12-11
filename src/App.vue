@@ -77,6 +77,7 @@
             :max-zoom="1.5"
             :min-zoom="0.3"
             :connection-line-options="connectionLineOptions"
+            :delete-key-code="['Backspace', 'Delete']"
           >
             <MiniMap 
               :pannable="true"
