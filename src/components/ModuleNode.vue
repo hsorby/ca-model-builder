@@ -58,7 +58,12 @@
           </template>
         </el-dropdown>
 
-        <el-button size="small" circle @click="openEditDialog" class="module-button">
+        <el-button
+          size="small"
+          circle
+          @click="openEditDialog"
+          class="module-button"
+        >
           <el-icon><Edit /></el-icon>
         </el-button>
       </div>
@@ -97,12 +102,14 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, useId } from "vue"
-import { Handle, Position, useVueFlow } from "@vue-flow/core"
-import { NodeResizer } from "@vue-flow/node-resizer"
-import { Delete, Edit, Key, Place, Plus } from "@element-plus/icons-vue"
+import { computed, nextTick, ref, useId } from 'vue'
+import { Handle, Position, useVueFlow } from '@vue-flow/core'
+import { NodeResizer } from '@vue-flow/node-resizer'
+import { Delete, Edit, Key, Place, Plus } from '@element-plus/icons-vue'
+import { useFlowHistoryStore } from '../stores/flowHistory'
 
 const { updateNodeData, updateNodeInternals } = useVueFlow()
+const historyStore = useFlowHistoryStore()
 
 const props = defineProps({
   data: {
@@ -119,13 +126,13 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(["open-edit-dialog"])
+const emit = defineEmits(['open-edit-dialog'])
 
 const id = useId()
 const moduleNode = ref(null)
 
 async function openEditDialog() {
-  emit("open-edit-dialog", {
+  emit('open-edit-dialog', {
     nodeId: props.id,
     ports: props.data.ports,
     name: props.data.name,
@@ -137,18 +144,18 @@ async function openEditDialog() {
 const domainTypeClass = computed(() => {
   return props.data.domainType
     ? `domain-type-${props.data.domainType}`
-    : "domain-type-default"
+    : 'domain-type-default'
 })
 
 function portPosition(type) {
   switch (type) {
-    case "left":
+    case 'left':
       return Position.Left
-    case "right":
+    case 'right':
       return Position.Right
-    case "top":
+    case 'top':
       return Position.Top
-    case "bottom":
+    case 'bottom':
       return Position.Bottom
     default:
       return Position.Left
@@ -156,7 +163,7 @@ function portPosition(type) {
 }
 
 function handleSetDomainType(typeCommand) {
-  const newType = typeCommand === "undefined" ? undefined : typeCommand
+  const newType = typeCommand === 'undefined' ? undefined : typeCommand
   updateNodeData(props.id, { domainType: newType })
 }
 
@@ -188,7 +195,7 @@ function getHandleStyle(index, port) {
   // This calculates the offset from the center
   const offset = portSpacing * (positionIndex - (n - 1) / 2)
 
-  if (["top", "bottom"].includes(port.type)) {
+  if (['top', 'bottom'].includes(port.type)) {
     // Let CSS calculate the 50% mark and apply the offset
     return {
       left: `calc(50% + ${offset}px)`,
@@ -201,36 +208,56 @@ function getHandleStyle(index, port) {
   }
 }
 
+const applyPorts = async (portsToSet) => {
+  updateNodeData(props.id, { ports: portsToSet })
+
+  // Changing ports adds/removes handles, so we MUST refresh internals
+  await nextTick()
+  updateNodeInternals(props.id)
+}
+
 async function removePort(indexToRemove) {
+  const oldPorts = [...props.data.ports]
   // Create a new array filtering out the port we want to remove
-  const newPortsArray = props.data.ports.filter((port, index) => {
+  const newPorts = props.data.ports.filter((port, index) => {
     // Keep the port only if its index does NOT match indexToRemove
     return index !== indexToRemove
   })
 
-  // Update the node's data
-  updateNodeData(props.id, { ports: newPortsArray })
+  await applyPorts(newPorts)
 
-  // Wait for Vue to update the DOM
-  await nextTick()
-
-  // Tell Vue Flow to re-scan the node's handles
-  updateNodeInternals(props.id)
+  historyStore.addCommand({
+    type: 'remove-port',
+    undo: async () => {
+      applyPorts(oldPorts)
+    },
+    redo: async () => {
+      applyPorts(newPorts)
+    },
+  })
 }
 
 const addPort = async (portToAdd) => {
-  // Create a new array with the old ports + the new one
-  const newPortsArray = [...props.data.ports, portToAdd]
+  const oldPorts = [...props.data.ports]
+  const newPorts = [...props.data.ports, portToAdd]
 
   // Tell Vue Flow to update this node's data
   // This will cause the component to re-render
-  updateNodeData(props.id, { ports: newPortsArray })
-  await nextTick()
-  updateNodeInternals(props.id)
+  await applyPorts(newPorts)
+
+  historyStore.addCommand({
+    type: 'add-port',
+    undo: async () => {
+      applyPorts(oldPorts)
+    },
+    redo: async () => {
+      applyPorts(newPorts)
+    },
+  })
 }
 
 const isEditing = ref(false)
-const editingName = ref("")
+const editingName = ref('')
 const inputRef = ref(null) // This is a template ref for the input
 
 // This function is triggered by the double-click
@@ -256,7 +283,7 @@ function StopDrag(event) {
 
 // This is triggered by pressing Enter or clicking away
 function saveEdit() {
-  if (!editingName.value || editingName.value.trim() === "") {
+  if (!editingName.value || editingName.value.trim() === '') {
     isEditing.value = false // Cancel edit if name is empty
     return
   }

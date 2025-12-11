@@ -1,16 +1,26 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 
 export const useFlowHistoryStore = defineStore('flowHistory', () => {
   const stack = ref([])
   const pointer = ref(-1)
-  const isUndoRedoing = ref(false)
+  const working = ref(false)
+  const lastChangeWasAdd = ref(false)
 
   const isBatching = ref(false)
   const activeBatch = ref([])
 
   const canUndo = computed(() => pointer.value >= 0)
   const canRedo = computed(() => pointer.value < stack.value.length - 1)
+  const isUndoRedoing = computed(() => working.value)
+  const pointerIndex = computed(() => pointer.value)
+  const lastCommandHadOffsetApplied = computed(() => {
+    if (pointer.value < 0) {
+      return false
+    }
+    const cmd = stack.value[pointer.value]
+    return cmd.offset === 'applied'
+  })
 
   /**
    * Start collecting commands into a temporary bucket
@@ -21,10 +31,22 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
   }
 
   /**
+   * Cancel the current batch without saving it.
+   */
+  function cancelBatch() {
+    isBatching.value = false
+    activeBatch.value = []
+  }
+
+  /**
    * Stop collecting commands and save the bucket as ONE history entry
    */
   function commitBatch() {
     isBatching.value = false
+    if (working.value) {
+      activeBatch.value = []
+      return
+    }
 
     // If nothing happened, don't create an empty history entry
     if (activeBatch.value.length === 0) {
@@ -66,11 +88,23 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
     pointer.value++
   }
 
+  function lastChangeWasAddSetter(value) {
+    lastChangeWasAdd.value = value
+  }
+
+  function replaceLastCommand(command) {
+    if (pointer.value < 0) {
+      return
+    }
+
+    stack.value[pointer.value] = command
+  }
+
   /**
    * Modified addCommand
    */
   function addCommand(command) {
-    if (isUndoRedoing.value) {
+    if (working.value) {
       return
     }
 
@@ -87,35 +121,43 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
     if (!canUndo.value) {
       return
     }
-    isUndoRedoing.value = true
+    working.value = true
     const command = stack.value[pointer.value]
     command.undo()
     pointer.value--
-    setTimeout(() => {
-      isUndoRedoing.value = false
-    }, 10)
+    nextTick().then(() => {
+      working.value = false
+    })
   }
 
   function redo() {
     if (!canRedo.value) {
       return
     }
-    isUndoRedoing.value = true
+    working.value = true
     pointer.value++
     const command = stack.value[pointer.value]
+    lastChangeWasAdd.value = command.type === 'add'
     command.redo()
-    setTimeout(() => {
-      isUndoRedoing.value = false
-    }, 10)
+    nextTick().then(() => {
+      working.value = false
+    })
   }
 
   return {
     addCommand,
-    undo,
-    redo,
-    canUndo,
+    cancelBatch,
     canRedo,
-    startBatch,
+    canUndo,
     commitBatch,
+    isUndoRedoing,
+    lastChangeWasAdd,
+    lastChangeWasAddSetter,
+    lastCommandHadOffsetApplied,
+    pointerIndex,
+    redo,
+    replaceLastCommand,
+    startBatch,
+    undo,
   }
 })

@@ -94,8 +94,8 @@
           <VueFlow
             @dragover="onDragOver"
             @dragleave="onDragLeave"
-            @nodes-change="onChange"
-            @edges-change="onChange"
+            @nodes-change="onNodeChange"
+            @edges-change="onEdgeChange"
             @node-drag-start="onNodeDragStart"
             @node-drag-stop="onNodeDragStop"
             :translate-extent="finiteTranslateExtent"
@@ -182,13 +182,16 @@ const {
   updateNodeData,
 } = useVueFlow()
 
-const { onDragOver, onDrop, onDragLeave, isDragOver } = useDragAndDrop()
+const pendingHistoryNodes = new Set()
+
+const { onDragOver, onDrop, onDragLeave, isDragOver } =
+  useDragAndDrop(pendingHistoryNodes)
 const historyStore = useFlowHistoryStore()
 
 import testModuleBGContent from './assets/bg_modules.cellml?raw'
 import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
 import testParamertersCSV from './assets/colon_FTU_parameters.csv?raw'
-import { el } from 'element-plus/es/locales.mjs'
+import { no } from 'element-plus/es/locales.mjs'
 
 const testData = {
   filename: 'colon_FTU_modules.cellml',
@@ -229,20 +232,6 @@ const onNodeDragStop = (event) => {
   const node = event.node
   const start = { ...dragStartPos }
   const end = { ...node.position }
-
-  // Only add history if it actually moved
-  if (start.x !== end.x || start.y !== end.y) {
-    historyStore.addCommand({
-      redo: () => {
-        const n = findNode(node.id)
-        if (n) n.position = end
-      },
-      undo: () => {
-        const n = findNode(node.id)
-        if (n) n.position = start
-      },
-    })
-  }
 }
 
 onConnect((connection) => {
@@ -271,6 +260,7 @@ const extractNodeData = (node) => {
     type: node.type,
     position: { ...node.position },
     data: { ...node.data },
+    dimensions: { ...node.dimensions },
     selected: node.selected,
   }
 }
@@ -298,133 +288,144 @@ const flushPositionChanges = () => {
   const undoSnapshots = []
   const redoSnapshots = []
 
-  // 1. Build the snapshots
+  // Build the snapshots
   for (const [id, startSnapshot] of movementBuffer.entries()) {
-    const endSnapshot = snapshotNode(id)
+    const endSnapshot = snapshotNode({ id })
 
     // Only record if it actually moved
     if (
-      endSnapshot &&
-      (startSnapshot.position.x !== endSnapshot.position.x ||
-        startSnapshot.position.y !== endSnapshot.position.y)
+      (endSnapshot &&
+        (startSnapshot.position.x !== endSnapshot.position.x ||
+          startSnapshot.position.y !== endSnapshot.position.y)) ||
+      startSnapshot.dimensions.width !== endSnapshot.dimensions.width ||
+      startSnapshot.dimensions.height !== endSnapshot.dimensions.height
     ) {
       undoSnapshots.push(startSnapshot)
       redoSnapshots.push(endSnapshot)
     }
   }
 
-  // 2. Create the Command
+  // Create the Command
   if (undoSnapshots.length > 0) {
     historyStore.addCommand({
+      type: 'move',
       undo: () => {
         // Restore all nodes in this batch to start positions
         undoSnapshots.forEach((snap) => {
           const node = findNode(snap.id)
-          if (node) node.position = snap.position
+          if (node) {
+            node.position = snap.position
+            node.dimensions = snap.dimensions
+          }
         })
       },
       redo: () => {
         // Restore all nodes in this batch to end positions
         redoSnapshots.forEach((snap) => {
           const node = findNode(snap.id)
-          if (node) node.position = snap.position
+          if (node) {
+            node.position = snap.position
+            node.dimensions = snap.dimensions
+          }
         })
       },
     })
   }
 
-  // 3. Reset
+  // Reset
   movementBuffer.clear()
   movementTimeout = null
 }
 
-const processNonPositionBatch = (changes) => {
-  // We use a Map to track what happened to each node in this specific batch
-  const nodeActions = new Map()
-
-  changes.forEach((change) => {
-    if (!nodeActions.has(change.id)) {
-      nodeActions.set(change.id, { events: [] })
-    }
-    nodeActions.get(change.id).events.push(change)
-  })
-
-  // Now process per node
-  for (const [id, record] of nodeActions.entries()) {
-    const events = record.events
-
-    // Check if this batch contains an 'add' event
-    const addEvent = events.find((e) => e.type === 'add')
-    const removeEvent = events.find((e) => e.type === 'remove')
-
-    if (addEvent) {
-      // SCENARIO 1: ADD (+ maybe dimensions)
-      // The 'add' event usually carries the node data in `change.item`
-      // We essentially ignore the 'dimensions' event because the snapshot
-      // of the Added node should be sufficient.
-
-      const snap = snapshotNode(addEvent) // This uses your extractNodeData(change.item) logic
-
-      if (snap) {
-        historyStore.addCommand({
-          undo: () => removeNodes(snap.id),
-          redo: () => addNodes(snap),
-        })
-      }
-    } else if (removeEvent) {
-      // SCENARIO 2: REMOVE
-      const snap = snapshotNode(removeEvent) // This uses findNode + extract
-
-      if (snap) {
-        historyStore.addCommand({
-          undo: () => addNodes(snap),
-          redo: () => removeNodes(snap.id),
-        })
-      }
-    } else {
-      // SCENARIO 3: Other isolated events (like selection or independent dimension changes)
-      // If it's JUST dimensions without an Add, you might want to ignore it
-      // or track it depending on your needs.
-      events.forEach((e) => {
-        if (e.type === 'dimensions') {
-          // Generally, we DO NOT want to undo/redo dimension changes
-          // unless they are resizing a node manually.
-          // Vue Flow handles auto-sizing internally.
-          // Leaving this empty usually filters out the noise.
-        } else if (e.type === 'select') {
-          // Handle selection if you want
-        }
+const processSingleChange = (change) => {
+  if (change.type === 'add') {
+    historyStore.lastChangeWasAddSetter(true)
+    const node = snapshotNode(change)
+    historyStore.addCommand({
+      type: 'add',
+      offset: 'not-applied',
+      undo: () => removeNodes(node.id),
+      redo: () => addNodes(node),
+    })
+  } else if (change.type === 'remove') {
+    const snap = snapshotNode(change)
+    if (snap) {
+      historyStore.addCommand({
+        type: 'remove',
+        undo: () => addNodes(snap),
+        redo: () => removeNodes(snap.id),
       })
+    }
+  } else {
+    if (change.type === 'select') {
+      // Ignore selection changes for history.
+    } else {
+      console.log('Unhandled non-debouncable change type:', change.type)
+      console.log(change)
     }
   }
 }
 
-const onChange = (changes) => {
-  const positionChanges = []
-  const nonPositionChanges = []
+const processNonDebouncableChanges = (changes) => {
+  if (changes.length === 1) {
+    const change = changes[0]
+    processSingleChange(change)
+  }
+}
+
+const onNodeChange = (changes) => {
+  if (historyStore.isUndoRedoing) {
+    // If we are currently undoing/redoing, bypass history tracking
+    return applyNodeChanges(changes)
+  }
+
+  const debouncableChanges = []
+  const nonDebouncableChanges = []
 
   changes.forEach((c) => {
     if (c.type === 'position' && c.position) {
-      positionChanges.push(c)
+      debouncableChanges.push(c)
+    } else if (c.type === 'dimensions' && c.dimensions) {
+      if (historyStore.lastChangeWasAdd) {
+        historyStore.lastChangeWasAddSetter(false)
+        if (!historyStore.lastCommandHadOffsetApplied) {
+          const node = snapshotNode(c)
+          node.position = {
+            x: node.position.x - node.dimensions.width / 2,
+            y: node.position.y - node.dimensions.height / 2,
+          }
+          historyStore.replaceLastCommand({
+            type: 'add',
+            offset: 'applied',
+            undo: () => removeNodes(node.id),
+            redo: () => addNodes(node),
+          })
+        }
+      } else {
+        debouncableChanges.push(c)
+      }
     } else {
-      nonPositionChanges.push(c)
+      nonDebouncableChanges.push(c)
     }
   })
+
   // --- HANDLER A: Position Changes (Debounced) ---
-  if (positionChanges.length > 0) {
+  if (debouncableChanges.length > 0) {
     // Clear existing timer
     if (movementTimeout) {
       clearTimeout(movementTimeout)
     }
 
     // Capture the "Start" state if we haven't yet for this specific drag session
-    positionChanges.forEach((change) => {
+    debouncableChanges.forEach((change) => {
       if (!movementBuffer.has(change.id)) {
         // We snapshot BEFORE the change is applied by Vue Flow logic?
         // Actually, onNodesChange fires BEFORE changes are applied.
         // So findNode currently returns the OLD position. Perfect.
-        const snap = snapshotNode(change.id)
-        if (snap) movementBuffer.set(change.id, snap)
+        const snap = snapshotNode(change)
+        if (snap) {
+          movementBuffer.set(change.id, snap)
+        }
       }
     })
 
@@ -433,7 +434,7 @@ const onChange = (changes) => {
   }
 
   // --- HANDLER B: Other Changes (Immediate) ---
-  if (nonPositionChanges.length > 0) {
+  if (nonDebouncableChanges.length > 0) {
     // CRITICAL: If we were dragging and suddenly deleted the node (or did something else),
     // we must flush the drag history FIRST so the sequence is correct.
     if (movementTimeout) {
@@ -441,135 +442,25 @@ const onChange = (changes) => {
       flushPositionChanges()
     }
 
-    processNonPositionBatch(nonPositionChanges)
+    processNonDebouncableChanges(nonDebouncableChanges)
+    // processNonPositionBatch(nonDebouncableChanges)
   }
 
-  // Finally, let Vue Flow update the graph
-  applyNodeChanges(changes)
-}
-
-let lastNodeChangeType = null
-const onNodesChange = (changes) => {
-  const changeTypes = new Set()
-  // console.log('Node change types in batch:', Array.from(changeTypes))
-
-  const affectedNodes = []
-  changes.forEach((change) => {
-    console.log('Node change:', change.type, change)
-    console.log(change.item)
-    changeTypes.add(change.type)
-    affectedNodes.push(snapshotNode(change))
-  })
-
-  //   }
-  //   // 1. Handle Removal
-  //   if (change.type !== lastNodeChangeType) {
-  //     console.log('Node change:', change.type, changes.length)
-  //     lastNodeChangeType = change.type
-  //   }
-  //   if (change.type === 'remove') {
-  //     const node = findNode(change.id)
-  //     // Only track if node exists (it might be already gone)
-  //     if (node) {
-  //       // CRITICAL: Create a generic object copy, stripping internal Vue Flow refs
-  //       // We manually copy properties we care about to avoid DataCloneError
-  //       const nodeSnapshot = {
-  //         id: node.id,
-  //         type: node.type,
-  //         position: { ...node.position },
-  //         data: { ...node.data }, // Ensure your data is clean!
-  //       }
-
-  //       historyStore.addCommand({
-  //         redo: () => removeNodes(nodeSnapshot.id),
-  //         undo: () => addNodes(nodeSnapshot),
-  //       })
-  //     }
-  //     nextChanges.push(change)
-  //   }
-  //   // 2. Handle Selection / Dimensions (Ignored by History)
-  //   else {
-  //     nextChanges.push(change)
-  //   }
-  // })
-
-  // if (changeTypes.length > 1) {
-  //   console.log('Multiple node change types in batch:', Array.from(changeTypes))
-  // } else {
-  //   const currentNodeChangeType = Array.from(changeTypes)[0]
-  //   if (
-  //     currentNodeChangeType === 'dimensions' &&
-  //     lastNodeChangeType === 'add'
-  //   ) {
-  //     // Ignore dimensions changes that immediately follow an add.
-  //     return applyNodeChanges(changes)
-  //   }
-  //   if (currentNodeChangeType === 'dimensions') {
-  //     // Ignore dimension changes for history.
-  //     return applyNodeChanges(changes)
-  //   } else if (currentNodeChangeType === 'select') {
-  //     // Ignore selection changes for history.
-  //     console.log(changes)
-  //     return applyNodeChanges(changes)
-  //   } else if (currentNodeChangeType === 'position') {
-  //     // Handle position changes as a batch.
-  //     changes.forEach(({ change, nodeSnapshot }) => {
-  //       const startPos = { ...nodeSnapshot.position }
-  //       const node = findNode(change.id)
-  //       if (!node) return
-  //       const endPos = { ...node.position }
-
-  //       // Only add history if it actually moved
-  //       if (startPos.x !== endPos.x || startPos.y !== endPos.y) {
-  //         historyStore.addCommand({
-  //           redo: () => {
-  //             const n = findNode(node.id)
-  //             if (n) n.position = endPos
-  //           },
-  //           undo: () => {
-  //             const n = findNode(node.id)
-  //             if (n) n.position = startPos
-  //           },
-  //         })
-  //       }
-  //     })
-  //   } else if (currentNodeChangeType === 'remove') {
-  //     // Handle removals as a batch.
-  //     console.log('remove changes', changes)
-  //     historyStore.addCommand({
-  //       redo: () => removeNodes(changes.map((n) => n.id)),
-  //       undo: () => addNodes(changes),
-  //     })
-  //   } else if (currentNodeChangeType === 'add') {
-  //     // Handle additions as a batch.
-  //     console.log('add changes', changes)
-  //     console.log('next changes', nextChanges)
-  //     const now = nextChanges.map((n) => n.id)
-  //     console.log('now', now)
-  //     historyStore.addCommand({
-  //       redo: () => addNodes(nextChanges),
-  //       undo: () => removeNodes(now),
-  //     })
-  //   }
-
-  //   console.log('Node change:', currentNodeChangeType, changes.length)
-  //   lastNodeChangeType = currentNodeChangeType
-  // }
-
+  // Have Vue Flow update the graph
   applyNodeChanges(changes)
 }
 
 let lastEdgeChangeType = null
-const onEdgesChange = (changes) => {
+const onEdgeChange = (changes) => {
   const nextChanges = []
   changes.forEach((change) => {
+    console.log('Edge change:', change.type, change)
     if (change.type === 'remove') {
       // Note: Finding edges by ID is harder in generic Vue Flow if you don't store them
       // But usually `changes` contains the ID.
       // You might need `findEdge` logic or access `edges.value` directly.
       const edge = edges.value.find((e) => e.id === change.id)
 
-      console.log('Edge removed:', change.id, edge)
       if (edge) {
         const edgeSnapshot = { ...edge } // Shallow copy usually enough for edges
         historyStore.addCommand({
@@ -893,18 +784,11 @@ function handleLoadWorkflow(file) {
 }
 
 const handleUndo = () => {
-  historyStore.undo((restoredNodes, restoredEdges) => {
-    // We must replace the array values, not the refs themselves
-    nodes.value = structuredClone(restoredNodes)
-    edges.value = structuredClone(restoredEdges)
-  })
+  historyStore.undo()
 }
 
 const handleRedo = () => {
-  historyStore.redo((restoredNodes, restoredEdges) => {
-    nodes.value = structuredClone(restoredNodes)
-    edges.value = structuredClone(restoredEdges)
-  })
+  historyStore.redo()
 }
 
 const finiteTranslateExtent = [
