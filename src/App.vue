@@ -180,6 +180,7 @@ const {
   removeNodes,
   setViewport,
   toObject,
+  updateNode,
   updateNodeData,
 } = useVueFlow()
 
@@ -279,6 +280,7 @@ const extractNodeData = (node) => {
     data: { ...node.data },
     dimensions: { ...node.dimensions },
     selected: node.selected,
+    style: { ...node.style },
   }
 }
 
@@ -305,65 +307,6 @@ const snapshotNode = (change) => {
 
   // Create a deep copy to break reactivity references
   return extractNodeData(node)
-}
-
-/**
- * Flushes pending movement changes to the history stack.
- * We call this when the timer expires OR if a different event interrupts the drag.
- */
-const flushPositionChanges = () => {
-  if (movementBuffer.size === 0) return
-
-  const undoSnapshots = []
-  const redoSnapshots = []
-
-  // Build the snapshots
-  for (const [id, startSnapshot] of movementBuffer.entries()) {
-    const endSnapshot = snapshotNode({ id })
-
-    // Only record if it actually moved
-    if (
-      (endSnapshot &&
-        (startSnapshot.position.x !== endSnapshot.position.x ||
-          startSnapshot.position.y !== endSnapshot.position.y)) ||
-      startSnapshot.dimensions.width !== endSnapshot.dimensions.width ||
-      startSnapshot.dimensions.height !== endSnapshot.dimensions.height
-    ) {
-      undoSnapshots.push(startSnapshot)
-      redoSnapshots.push(endSnapshot)
-    }
-  }
-
-  // Create the Command
-  if (undoSnapshots.length > 0) {
-    historyStore.addCommand({
-      type: 'move',
-      undo: () => {
-        // Restore all nodes in this batch to start positions
-        undoSnapshots.forEach((snap) => {
-          const node = findNode(snap.id)
-          if (node) {
-            node.position = snap.position
-            node.dimensions = snap.dimensions
-          }
-        })
-      },
-      redo: () => {
-        // Restore all nodes in this batch to end positions
-        redoSnapshots.forEach((snap) => {
-          const node = findNode(snap.id)
-          if (node) {
-            node.position = snap.position
-            node.dimensions = snap.dimensions
-          }
-        })
-      },
-    })
-  }
-
-  // Reset
-  movementBuffer.clear()
-  movementTimeout = null
 }
 
 const processSingleChange = (change) => {
@@ -395,7 +338,7 @@ const processSingleChange = (change) => {
   }
 }
 
-const processNonDebouncableChanges = (changes) => {
+const processOtherChanges = (changes) => {
   if (changes.length > 1) {
     historyStore.beginBatch()
   }
@@ -409,19 +352,52 @@ const processNonDebouncableChanges = (changes) => {
   }
 }
 
+const activeInteractionBuffer = new Map()
+
 const onNodeChange = (changes) => {
   if (historyStore.isUndoRedoing) {
     // If we are currently undoing/redoing, bypass history tracking
     return applyNodeChanges(changes)
   }
 
-  const debouncableChanges = []
-  const nonDebouncableChanges = []
-
+  const otherChanges = []
   changes.forEach((c) => {
-    if (c.type === 'position' && c.position) {
-      debouncableChanges.push(c)
-    } else if (c.type === 'dimensions' && c.dimensions) {
+    if (c.type === 'position') {
+      if (c.position === undefined && c.from) {
+        if (activeInteractionBuffer.has(c.id)) {
+          const startSnapshot = activeInteractionBuffer.get(c.id)
+          const endSnapshot = snapshotNode({id: c.id}) // Get current state from store
+
+          // Only commit if position actually changed
+          if (
+            endSnapshot &&
+            (startSnapshot.position.x !== endSnapshot.position.x ||
+              startSnapshot.position.y !== endSnapshot.position.y)
+          ) {
+            historyStore.addCommand({
+              type: 'move',
+              undo: () => {
+                const n = findNode(startSnapshot.id)
+                if (n) n.position = startSnapshot.position
+              },
+              redo: () => {
+                const n = findNode(endSnapshot.id)
+                if (n) n.position = endSnapshot.position
+              },
+            })
+          }
+          activeInteractionBuffer.delete(c.id)
+        }
+      } else if (c.position) {
+        // Capture the "Start" state if we haven't yet for this specific drag session.
+        if (!activeInteractionBuffer.has(c.id)) {
+          const snap = snapshotNode({id: c.id})
+          if (snap) {
+            activeInteractionBuffer.set(c.id, snap)
+          }
+        }
+      }
+    } else if (c.type === 'dimensions') {
       if (historyStore.lastChangeWasAdd) {
         historyStore.lastChangeWasAddSetter(false)
         if (!historyStore.lastCommandHadOffsetApplied) {
@@ -437,49 +413,56 @@ const onNodeChange = (changes) => {
             redo: () => addNodes(node),
           })
         }
-      } else {
-        debouncableChanges.push(c)
+      } else if (
+        c.dimensions === undefined &&
+        activeInteractionBuffer.has(c.id)
+      ) {
+        const startSnapshot = activeInteractionBuffer.get(c.id)
+        const endSnapshot = snapshotNode({id: c.id})
+
+        // Only add command if dimensions actually changed
+        if (
+          endSnapshot &&
+          (startSnapshot.dimensions.width !== endSnapshot.dimensions.width ||
+            startSnapshot.dimensions.height !== endSnapshot.dimensions.height)
+        ) {
+          historyStore.addCommand({
+            type: 'resize',
+            undo: () => {
+              const n = findNode(startSnapshot.id)
+              if (n) {
+                n.dimensions = startSnapshot.dimensions
+                n.position = startSnapshot.position
+                n.style = { ...startSnapshot.style }
+              }
+            },
+            redo: () => {
+              const n = findNode(endSnapshot.id)
+              if (n) {
+                n.dimensions = endSnapshot.dimensions
+                n.position = endSnapshot.position
+                n.style = { ...endSnapshot.style }
+              }
+            },
+          })
+        }
+        activeInteractionBuffer.delete(c.id)
+      } else if (c.dimensions) {
+        if (!activeInteractionBuffer.has(c.id)) {
+          const snap = snapshotNode({id: c.id})
+          if (snap) {
+            activeInteractionBuffer.set(c.id, snap)
+          }
+        }
       }
     } else {
-      nonDebouncableChanges.push(c)
+      activeInteractionBuffer.delete(c.id)
+      otherChanges.push(c)
     }
   })
 
-  // --- HANDLER A: Position Changes (Debounced) ---
-  if (debouncableChanges.length > 0) {
-    // Clear existing timer
-    if (movementTimeout) {
-      clearTimeout(movementTimeout)
-    }
-
-    // Capture the "Start" state if we haven't yet for this specific drag session
-    debouncableChanges.forEach((change) => {
-      if (!movementBuffer.has(change.id)) {
-        // We snapshot BEFORE the change is applied by Vue Flow logic?
-        // Actually, onNodesChange fires BEFORE changes are applied.
-        // So findNode currently returns the OLD position. Perfect.
-        const snap = snapshotNode(change)
-        if (snap) {
-          movementBuffer.set(change.id, snap)
-        }
-      }
-    })
-
-    // Set a timer to finalize the move if no more events come in
-    movementTimeout = setTimeout(flushPositionChanges, DEBOUNCE_MS)
-  }
-
-  // --- HANDLER B: Other Changes (Immediate) ---
-  if (nonDebouncableChanges.length > 0) {
-    // CRITICAL: If we were dragging and suddenly deleted the node (or did something else),
-    // we must flush the drag history FIRST so the sequence is correct.
-    if (movementTimeout) {
-      clearTimeout(movementTimeout)
-      flushPositionChanges()
-    }
-
-    processNonDebouncableChanges(nonDebouncableChanges)
-    // processNonPositionBatch(nonDebouncableChanges)
+  if (otherChanges.length > 0) {
+    processOtherChanges(otherChanges)
   }
 
   // Have Vue Flow update the graph
@@ -498,7 +481,6 @@ const onEdgeChange = (changes) => {
 
   const nextChanges = []
   changes.forEach((change) => {
-    console.log('Edge change:', change.type, change)
     if (change.type === 'remove') {
       const edgeSnapshot = findEdge(change.id)
       if (edgeSnapshot) {
@@ -510,12 +492,10 @@ const onEdgeChange = (changes) => {
       nextChanges.push(change)
     } else if (change.type === 'add') {
       const edgeSnapshot = snapshotEdge(change)
-      console.log('Edge snapshot for add:', edgeSnapshot)
       historyStore.addCommand({
         redo: () => addEdges(edgeSnapshot),
         undo: () => removeEdges(edgeSnapshot.id),
       })
-      console.log('done')
     } else {
       nextChanges.push(change)
     }
