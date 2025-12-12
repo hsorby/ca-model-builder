@@ -1,11 +1,11 @@
-// this utility function can be called with a position change (inside onNodesChange)
-// it checks all other nodes and calculated the helper line positions and the position where the current node should snap to
+// This utility function can be called with a position change (inside onNodesChange).
+// It checks all other nodes and calculated the helper line positions and the position where the current node should snap to.
 export function getHelperLines(change, nodes, distance = 5) {
   const defaultResult = {
     horizontal: undefined,
     vertical: undefined,
     snapPosition: { x: undefined, y: undefined },
-    alignment: undefined // 'edge' | 'centre'
+    alignment: undefined, // 'edge' | 'centre'
   }
 
   const nodeA = nodes.find((node) => node.id === change.id)
@@ -22,7 +22,7 @@ export function getHelperLines(change, nodes, distance = 5) {
     width: nodeA.dimensions.width ?? 0,
     height: nodeA.dimensions.height ?? 0,
     centreX: change.position.x + (nodeA.dimensions.width ?? 0) / 2,
-    centreY: change.position.y + (nodeA.dimensions.height ?? 0) / 2
+    centreY: change.position.y + (nodeA.dimensions.height ?? 0) / 2,
   }
 
   let horizontalDistance = distance
@@ -39,7 +39,7 @@ export function getHelperLines(change, nodes, distance = 5) {
         width: nodeB.width ?? 0,
         height: nodeB.height ?? 0,
         centreX: nodeB.position.x + (nodeB.dimensions.width ?? 0) / 2,
-        centreY: nodeB.position.y + (nodeB.dimensions.height ?? 0) / 2
+        centreY: nodeB.position.y + (nodeB.dimensions.height ?? 0) / 2,
       }
 
       //  |‾‾‾‾‾‾‾‾‾‾‾|
@@ -138,8 +138,10 @@ export function getHelperLines(change, nodes, distance = 5) {
       //  |‾‾‾‾‾‾‾‾‾‾‾|     |‾‾‾‾‾‾‾‾‾‾‾|
       //  |     A     |     |     B     |
       //  |___________|_____|___________|
-      
-      const distanceBottomBottom = Math.abs(nodeABounds.bottom - nodeBBounds.bottom)
+
+      const distanceBottomBottom = Math.abs(
+        nodeABounds.bottom - nodeBBounds.bottom
+      )
       if (distanceBottomBottom < horizontalDistance) {
         result.snapPosition.y = nodeBBounds.bottom - nodeABounds.height
         result.horizontal = nodeBBounds.bottom
@@ -164,7 +166,9 @@ export function getHelperLines(change, nodes, distance = 5) {
 
       // Center X to Centre X
 
-      const distanceCentreX = Math.abs(nodeABounds.centreX - nodeBBounds.centreX)
+      const distanceCentreX = Math.abs(
+        nodeABounds.centreX - nodeBBounds.centreX
+      )
       if (distanceCentreX < verticalDistance) {
         result.snapPosition.x = nodeBBounds.centreX - nodeABounds.width / 2
         result.vertical = nodeBBounds.centreX
@@ -174,7 +178,9 @@ export function getHelperLines(change, nodes, distance = 5) {
 
       // Center Y to Centre Y
 
-      const distanceCentreY = Math.abs(nodeABounds.centreY - nodeBBounds.centreY)
+      const distanceCentreY = Math.abs(
+        nodeABounds.centreY - nodeBBounds.centreY
+      )
       if (distanceCentreY < horizontalDistance) {
         result.snapPosition.y = nodeBBounds.centreY - nodeABounds.height / 2
         result.horizontal = nodeBBounds.centreY
