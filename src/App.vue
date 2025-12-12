@@ -102,15 +102,33 @@
             :max-zoom="1.5"
             :min-zoom="0.3"
             :connection-line-options="connectionLineOptions"
+            :nodes="nodes"
+            fit-view-on-init
+            :delete-key-code="['Backspace', 'Delete']"
           >
+            <HelperLines
+              :horizontal="helperLineHorizontal"
+              :vertical="helperLineVertical"
+              :alignment="alignment"
+            />
             <MiniMap :pannable="true" :zoomable="true" />
-            <Controls />
+            <Controls>
+              <ControlButton
+                :disabled="screenshotDisabled"
+                title="PNG Screenshot"
+                @click="doPngScreenshot"
+              >
+                <CameraFilled />
+              </ControlButton>
+            </Controls>
             <template #node-moduleNode="props">
               <ModuleNode
                 :id="props.id"
                 :data="props.data"
                 :selected="props.selected"
                 @open-edit-dialog="onOpenEditDialog"
+                @open-replacement-dialog="onOpenReplacementDialog"
+                :ref="(el) => (nodeRefs[props.id] = el)"
               />
             </template>
             <Workbench>
@@ -137,6 +155,7 @@
     @confirm="onSaveConfirm"
     :default-name="builderStore.lastSaveName"
   />
+
   <SaveDialog
     v-model="exportDialogVisible"
     @confirm="onExportConfirm"
@@ -144,14 +163,23 @@
     :default-name="builderStore.lastExportName"
     suffix=".zip"
   />
+
+  <ModuleReplacementDialog
+    v-model="replacementDialogVisible"
+    :modules="builderStore.availableModules"
+    :node-id="currentEditingNode.nodeId"
+    :port-options="currentEditingNode?.portOptions || []"
+    :port-labels="currentEditingNode?.portLabels || []"
+    @confirm="onReplaceConfirm"
+  />
 </template>
 
 <script setup>
 import { computed, inject, nextTick, onMounted, ref } from 'vue'
 import { ElNotification } from 'element-plus'
 import { MarkerType, useVueFlow, VueFlow } from '@vue-flow/core'
-import { DCaret } from '@element-plus/icons-vue'
-import { Controls } from '@vue-flow/controls'
+import { DCaret, CameraFilled } from '@element-plus/icons-vue'
+import { Controls, ControlButton } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import Papa from 'papaparse'
 
@@ -162,8 +190,16 @@ import Workbench from './components/WorkbenchArea.vue'
 import ModuleNode from './components/ModuleNode.vue'
 import useDragAndDrop from './composables/useDnD'
 import EditModuleDialog from './components/EditModuleDialog.vue'
+import ModuleReplacementDialog from './components/ModuleReplacementDialog.vue'
 import SaveDialog from './components/SaveDialog.vue'
+import HelperLines from './components/HelperLines.vue'
+import { useScreenshot } from './services/useScreenshot'
 import { generateExportZip } from './services/caExport'
+import { getHelperLines } from './utils/utils'
+
+import testModuleBGContent from './assets/bg_modules.cellml?raw'
+import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
+import testParamertersCSV from './assets/colon_FTU_parameters.csv?raw'
 
 const {
   addEdges,
@@ -180,8 +216,8 @@ const {
   removeNodes,
   setViewport,
   toObject,
-  updateNode,
   updateNodeData,
+  vueFlowRef,
 } = useVueFlow()
 
 const pendingHistoryNodes = new Set()
@@ -190,10 +226,48 @@ const { onDragOver, onDrop, onDragLeave, isDragOver } =
   useDragAndDrop(pendingHistoryNodes)
 const historyStore = useFlowHistoryStore()
 
-import testModuleBGContent from './assets/bg_modules.cellml?raw'
-import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
-import testParamertersCSV from './assets/colon_FTU_parameters.csv?raw'
-import { hi, no } from 'element-plus/es/locales.mjs'
+const { capture } = useScreenshot()
+
+const helperLineHorizontal = ref(null)
+const helperLineVertical = ref(null)
+const alignment = ref('edge')
+
+function updateHelperLines(changes, nodes) {
+  helperLineHorizontal.value = undefined
+  helperLineVertical.value = undefined
+
+  if (
+    changes.length === 1 &&
+    changes[0].type === 'position' &&
+    changes[0].dragging &&
+    changes[0].position
+  ) {
+    const helperLines = getHelperLines(changes[0], nodes)
+
+    // if we have a helper line, we snap the node to the helper line position
+    // this is being done by manipulating the node position inside the change object
+    changes[0].position.x = helperLines.snapPosition.x ?? changes[0].position.x
+    changes[0].position.y = helperLines.snapPosition.y ?? changes[0].position.y
+
+    // if helper lines are returned, we set them so that they can be displayed
+    helperLineHorizontal.value = helperLines.horizontal
+    helperLineVertical.value = helperLines.vertical
+    alignment.value = helperLines.alignment
+  }
+
+  return changes
+}
+
+onConnect((connection) => {
+  // Match what we specify in connectionLineOptions.
+  const newEdge = {
+    ...connection,
+    type: 'smoothstep',
+    markerEnd: MarkerType.ArrowClosed,
+  }
+
+  addEdges(newEdge)
+})
 
 const testData = {
   filename: 'colon_FTU_modules.cellml',
@@ -207,6 +281,7 @@ const libcellml = inject('$libcellml')
 const editDialogVisible = ref(false)
 const saveDialogVisible = ref(false)
 const exportDialogVisible = ref(false)
+const replacementDialogVisible = ref(false)
 const currentEditingNode = ref({ nodeId: '', ports: [], name: '' })
 const asideWidth = ref(250)
 const connectionLineOptions = ref({
@@ -219,6 +294,7 @@ const connectionLineOptions = ref({
 })
 
 const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
+
 const exportAvailable = computed(
   () => nodes.value.length > 0 && builderStore.parameterData.length > 0
 )
@@ -366,7 +442,7 @@ const onNodeChange = (changes) => {
       if (c.position === undefined && c.from) {
         if (activeInteractionBuffer.has(c.id)) {
           const startSnapshot = activeInteractionBuffer.get(c.id)
-          const endSnapshot = snapshotNode({id: c.id}) // Get current state from store
+          const endSnapshot = snapshotNode({ id: c.id }) // Get current state from store
 
           // Only commit if position actually changed
           if (
@@ -391,7 +467,7 @@ const onNodeChange = (changes) => {
       } else if (c.position) {
         // Capture the "Start" state if we haven't yet for this specific drag session.
         if (!activeInteractionBuffer.has(c.id)) {
-          const snap = snapshotNode({id: c.id})
+          const snap = snapshotNode({ id: c.id })
           if (snap) {
             activeInteractionBuffer.set(c.id, snap)
           }
@@ -418,7 +494,7 @@ const onNodeChange = (changes) => {
         activeInteractionBuffer.has(c.id)
       ) {
         const startSnapshot = activeInteractionBuffer.get(c.id)
-        const endSnapshot = snapshotNode({id: c.id})
+        const endSnapshot = snapshotNode({ id: c.id })
 
         // Only add command if dimensions actually changed
         if (
@@ -449,7 +525,7 @@ const onNodeChange = (changes) => {
         activeInteractionBuffer.delete(c.id)
       } else if (c.dimensions) {
         if (!activeInteractionBuffer.has(c.id)) {
-          const snap = snapshotNode({id: c.id})
+          const snap = snapshotNode({ id: c.id })
           if (snap) {
             activeInteractionBuffer.set(c.id, snap)
           }
@@ -465,8 +541,11 @@ const onNodeChange = (changes) => {
     processOtherChanges(otherChanges)
   }
 
+  const updatedChanges = updateHelperLines(changes, nodes.value)
+
   // Have Vue Flow update the graph
   applyNodeChanges(changes)
+  applyNodeChanges(updatedChanges)
 }
 
 const onEdgeChange = (changes) => {
@@ -507,6 +586,9 @@ const onEdgeChange = (changes) => {
 
   applyEdgeChanges(nextChanges)
 }
+const screenshotDisabled = computed(
+  () => nodes.value.length === 0 && vueFlowRef.value !== null
+)
 
 function onOpenEditDialog(eventPayload) {
   currentEditingNode.value = {
@@ -591,7 +673,6 @@ function processModuleData(cellmlString, fileName) {
     })
     comp.delete()
   }
-  // store.setAvailableModules(data)
 
   model.delete()
   return { type: 'success', data }
@@ -669,6 +750,27 @@ const handleParametersFile = (file) => {
       })
     },
   })
+}
+
+const nodeRefs = ref({})
+
+function onOpenReplacementDialog(eventPayload) {
+  currentEditingNode.value = {
+    ...eventPayload,
+  }
+  replacementDialogVisible.value = true
+}
+
+async function onReplaceConfirm(updatedData) {
+  const nodeId = currentEditingNode.value.nodeId
+  if (!nodeId) return
+  const compLabel = updatedData.componentName
+  const filePart = updatedData.sourceFile
+  const label = filePart ? `${compLabel} — ${filePart}` : compLabel
+
+  updatedData.label = label
+  updateNodeData(nodeId, updatedData)
+  replacementDialogVisible.value = false
 }
 
 function handleSaveWorkflow() {
@@ -766,6 +868,7 @@ function mergeModules(newModules) {
 
   builderStore.availableModules = Array.from(moduleMap.values())
 }
+
 /**
  * Reads a JSON file and restores the application state.
  */
@@ -854,6 +957,10 @@ const startResize = (event) => {
   window.addEventListener('mouseup', stopResize)
   // Disable text selection globally while dragging
   document.body.style.userSelect = 'none'
+}
+
+function doPngScreenshot() {
+  capture(vueFlowRef.value, { shouldDownload: true })
 }
 
 // --- Development Test Data ---

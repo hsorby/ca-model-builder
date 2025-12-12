@@ -117,31 +117,61 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
     }
   }
 
-  function undo() {
+  async function executeAndAddCommand(command) {
+    working.value = true
+
+    try {
+      await command.redo()
+      _pushToStack(command)
+    } finally {
+      working.value = false
+    }
+  }
+
+  async function undo() {
     if (!canUndo.value) {
       return
     }
     working.value = true
-    const command = stack.value[pointer.value]
-    command.undo()
-    pointer.value--
-    nextTick().then(() => {
+    try {
+      const command = stack.value[pointer.value]
+      pointer.value--
+      await command.undo()
+    } finally {
       working.value = false
-    })
+    }
+    // working.value = true
+    // const command = stack.value[pointer.value]
+    // command.undo()
+    // pointer.value--
+    // nextTick().then(() => {
+    //   working.value = false
+    // })
   }
 
-  function redo() {
+  async function redo() {
     if (!canRedo.value) {
       return
     }
+    if (!canRedo.value) return
+
     working.value = true
-    pointer.value++
-    const command = stack.value[pointer.value]
-    lastChangeWasAdd.value = command.type === 'add'
-    command.redo()
-    nextTick().then(() => {
+    try {
+      pointer.value++
+      const command = stack.value[pointer.value]
+      lastChangeWasAdd.value = command.type === 'add'
+      await command.redo()
+    } finally {
       working.value = false
-    })
+    }
+    // working.value = true
+    // pointer.value++
+    // const command = stack.value[pointer.value]
+    // lastChangeWasAdd.value = command.type === 'add'
+    // command.redo()
+    // nextTick().then(() => {
+    //   working.value = false
+    // })
   }
 
   return {
@@ -151,6 +181,7 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
     canRedo,
     canUndo,
     endBatch,
+    executeAndAddCommand,
     isUndoRedoing,
     lastChangeWasAdd,
     lastChangeWasAddSetter,
