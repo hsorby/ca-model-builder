@@ -47,7 +47,6 @@ function updateCanvasHelperLines() {
     ctx.beginPath()
     ctx.moveTo(vertical.value * zoom.value + x.value, 0)
     ctx.lineTo(vertical.value * zoom.value + x.value, height.value)
-    console.log(props.alignment)
     if (props.alignment === 'centre') {
       ctx.strokeStyle = '#394455'
       ctx.lineWidth = 2
@@ -62,7 +61,6 @@ function updateCanvasHelperLines() {
     ctx.beginPath()
     ctx.moveTo(0, horizontal.value * zoom.value + y.value)
     ctx.lineTo(width.value, horizontal.value * zoom.value + y.value)
-    console.log(props.alignment)
     if (props.alignment === 'centre') {
       ctx.strokeStyle = '#394455'
       ctx.lineWidth = 2
