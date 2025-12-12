@@ -78,23 +78,33 @@
             :min-zoom="0.3"
             :connection-line-options="connectionLineOptions"
             :nodes="nodes"
-            fit-view-on-init @nodes-change="onNodesChange"
+            fit-view-on-init
+            @nodes-change="onNodesChange"
+            :delete-key-code="['Backspace', 'Delete']"
           >
-          <HelperLines 
-          :horizontal="helperLineHorizontal"
-          :vertical="helperLineVertical"
-          :alignment="alignment"
-          />
-            <MiniMap 
-              :pannable="true"
-              :zoomable="true"
+            <HelperLines
+              :horizontal="helperLineHorizontal"
+              :vertical="helperLineVertical"
+              :alignment="alignment"
             />
+            <MiniMap :pannable="true" :zoomable="true" />
+            <Controls>
+              <ControlButton
+                :disabled="screenshotDisabled"
+                title="PNG Screenshot"
+                @click="doPngScreenshot"
+              >
+                <CameraFilled />
+              </ControlButton>
+            </Controls>
             <template #node-moduleNode="props">
               <ModuleNode
                 :id="props.id"
                 :data="props.data"
                 :selected="props.selected"
                 @open-edit-dialog="onOpenEditDialog"
+                @open-replacement-dialog="onOpenReplacementDialog"
+                :ref="(el) => (nodeRefs[props.id] = el)"
               />
             </template>
             <Workbench>
@@ -121,6 +131,7 @@
     @confirm="onSaveConfirm"
     :default-name="store.lastSaveName"
   />
+
   <SaveDialog
     v-model="exportDialogVisible"
     @confirm="onExportConfirm"
@@ -128,25 +139,37 @@
     :default-name="store.lastExportName"
     suffix=".zip"
   />
+
+  <ModuleReplacementDialog
+    v-model="replacementDialogVisible"
+    :modules="store.availableModules"
+    :node-id="currentEditingNode.nodeId"
+    :port-options="currentEditingNode?.portOptions || []"
+    :port-labels="currentEditingNode?.portLabels || []"
+    @confirm="onReplaceConfirm"
+  />
 </template>
 
 <script setup>
-import { computed, inject, nextTick, onMounted, ref } from "vue"
-import { ElNotification } from "element-plus"
-import { MarkerType, useVueFlow, VueFlow } from "@vue-flow/core"
-import { DCaret } from "@element-plus/icons-vue"
-import { MiniMap } from "@vue-flow/minimap"
-import Papa from "papaparse"
+import { computed, inject, nextTick, onMounted, ref } from 'vue'
+import { ElNotification } from 'element-plus'
+import { MarkerType, useVueFlow, VueFlow } from '@vue-flow/core'
+import { DCaret, CameraFilled } from '@element-plus/icons-vue'
+import { Controls, ControlButton } from '@vue-flow/controls'
+import { MiniMap } from '@vue-flow/minimap'
+import Papa from 'papaparse'
 
-import { useBuilderStore } from "./stores/builderStore"
-import ModuleList from "./components/ModuleList.vue"
-import Workbench from "./components/WorkbenchArea.vue"
-import ModuleNode from "./components/ModuleNode.vue"
-import useDragAndDrop from "./composables/useDnD"
-import EditModuleDialog from "./components/EditModuleDialog.vue"
-import SaveDialog from "./components/SaveDialog.vue"
-import HelperLines from "./components/HelperLines.vue"
-import { generateExportZip } from "./services/caExport"
+import { useBuilderStore } from './stores/builderStore'
+import ModuleList from './components/ModuleList.vue'
+import Workbench from './components/WorkbenchArea.vue'
+import ModuleNode from './components/ModuleNode.vue'
+import useDragAndDrop from './composables/useDnD'
+import EditModuleDialog from './components/EditModuleDialog.vue'
+import ModuleReplacementDialog from './components/ModuleReplacementDialog.vue'
+import SaveDialog from './components/SaveDialog.vue'
+import HelperLines from './components/HelperLines.vue'
+import { useScreenshot } from './services/useScreenshot'
+import { generateExportZip } from './services/caExport'
 import { getHelperLines } from './utils/utils'
 
 const {
@@ -158,7 +181,7 @@ const {
   setViewport,
   toObject,
   updateNodeData,
-  applyNodeChanges
+  applyNodeChanges,
 } = useVueFlow()
 
 const { onDragOver, onDrop, onDragLeave, isDragOver } = useDragAndDrop()
@@ -171,7 +194,12 @@ function updateHelperLines(changes, nodes) {
   helperLineHorizontal.value = undefined
   helperLineVertical.value = undefined
 
-  if (changes.length === 1 && changes[0].type === 'position' && changes[0].dragging && changes[0].position) {
+  if (
+    changes.length === 1 &&
+    changes[0].type === 'position' &&
+    changes[0].dragging &&
+    changes[0].position
+  ) {
     const helperLines = getHelperLines(changes[0], nodes)
 
     // if we have a helper line, we snap the node to the helper line position
@@ -197,33 +225,34 @@ onConnect((connection) => {
   // Match what we specify in connectionLineOptions.
   const newEdge = {
     ...connection,
-    type: "smoothstep",
+    type: 'smoothstep',
     markerEnd: MarkerType.ArrowClosed,
   }
 
   addEdges(newEdge)
 })
 
-import testModuleBGContent from "./assets/bg_modules.cellml?raw"
-import testModuleColonContent from "./assets/colon_FTU_modules.cellml?raw"
-import testParamertersCSV from "./assets/colon_FTU_parameters.csv?raw"
+import testModuleBGContent from './assets/bg_modules.cellml?raw'
+import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
+import testParamertersCSV from './assets/colon_FTU_parameters.csv?raw'
 
 const testData = {
-  filename: "colon_FTU_modules.cellml",
+  filename: 'colon_FTU_modules.cellml',
   content: testModuleColonContent,
 }
 
 const store = useBuilderStore()
 
-const libcellmlReadyPromise = inject("$libcellml_ready")
-const libcellml = inject("$libcellml")
+const libcellmlReadyPromise = inject('$libcellml_ready')
+const libcellml = inject('$libcellml')
 const editDialogVisible = ref(false)
 const saveDialogVisible = ref(false)
 const exportDialogVisible = ref(false)
-const currentEditingNode = ref({ nodeId: "", ports: [], name: "" })
+const replacementDialogVisible = ref(false)
+const currentEditingNode = ref({ nodeId: '', ports: [], name: '' })
 const asideWidth = ref(250)
 const connectionLineOptions = ref({
-  type: "smoothstep",
+  type: 'smoothstep',
   markerEnd: MarkerType.ArrowClosed,
   style: {
     strokeWidth: 5,
@@ -232,8 +261,13 @@ const connectionLineOptions = ref({
 })
 
 const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
+
 const exportAvailable = computed(
   () => nodes.value.length > 0 && store.parameterData.length > 0
+)
+
+const screenshotDisabled = computed(
+  () => nodes.value.length === 0 && vueFlowRef.value !== null
 )
 
 function onOpenEditDialog(eventPayload) {
@@ -264,10 +298,10 @@ function processModuleData(cellmlString, fileName) {
     return {
       issues: [
         {
-          description: "Failed to parse model.  Reason:" + err.message,
+          description: 'Failed to parse model.  Reason:' + err.message,
         },
       ],
-      type: "parser",
+      type: 'parser',
     }
   }
 
@@ -286,7 +320,7 @@ function processModuleData(cellmlString, fileName) {
     printer.delete()
     model.delete()
 
-    return { issues: errors, type: "parser" }
+    return { issues: errors, type: 'parser' }
   }
 
   parser.delete()
@@ -322,7 +356,7 @@ function processModuleData(cellmlString, fileName) {
   // store.setAvailableModules(data)
 
   model.delete()
-  return { type: "success", data }
+  return { type: 'success', data }
 }
 
 const handleModuleFile = (file) => {
@@ -332,14 +366,14 @@ const handleModuleFile = (file) => {
     try {
       try {
         const result = processModuleData(e.target.result, filename)
-        if (result.type !== "success") {
+        if (result.type !== 'success') {
           if (result.issues) {
             ElNotification({
-              title: "Error",
+              title: 'Error',
               message: `${result.issues.length} issues found in model file.`,
-              type: "error",
+              type: 'error',
             })
-            console.error("Model import issues:", result.issues)
+            console.error('Model import issues:', result.issues)
           }
           return
         }
@@ -348,20 +382,20 @@ const handleModuleFile = (file) => {
           modules: result.data,
         })
       } catch (err) {
-        console.error("Error parsing file:", err)
+        console.error('Error parsing file:', err)
         ElNotification({
-          title: "Error",
-          message: "Failed to parse module file as CellML.",
-          type: "error",
+          title: 'Error',
+          message: 'Failed to parse module file as CellML.',
+          type: 'error',
         })
         return
       }
     } catch (error) {
-      console.error("Error parsing module file:", error)
+      console.error('Error parsing module file:', error)
       ElNotification({
-        title: "Error",
-        message: "An error occurred while processing the module file.",
-        type: "error",
+        title: 'Error',
+        message: 'An error occurred while processing the module file.',
+        type: 'error',
       })
     }
   }
@@ -370,7 +404,7 @@ const handleModuleFile = (file) => {
 
 const handleParametersFile = (file) => {
   if (!file) {
-    ElNotification.error("No file selected.")
+    ElNotification.error('No file selected.')
     return
   }
 
@@ -384,7 +418,7 @@ const handleParametersFile = (file) => {
       store.setParameterData(results.data)
 
       ElNotification.success({
-        title: "Parameters Loaded",
+        title: 'Parameters Loaded',
         message: `Loaded ${results.data.length} parameters from ${file.name}.`,
         offset: 50,
       })
@@ -392,11 +426,32 @@ const handleParametersFile = (file) => {
 
     error: (err) => {
       ElNotification.error({
-        title: "CSV Parse Error",
+        title: 'CSV Parse Error',
         message: err.message,
       })
     },
   })
+}
+
+const nodeRefs = ref({})
+
+function onOpenReplacementDialog(eventPayload) {
+  currentEditingNode.value = {
+    ...eventPayload,
+  }
+  replacementDialogVisible.value = true
+}
+
+async function onReplaceConfirm(updatedData) {
+  const nodeId = currentEditingNode.value.nodeId
+  if (!nodeId) return
+  const compLabel = updatedData.componentName
+  const filePart = updatedData.sourceFile
+  const label = filePart ? `${compLabel} — ${filePart}` : compLabel
+
+  updatedData.label = label
+  updateNodeData(nodeId, updatedData)
+  replacementDialogVisible.value = false
 }
 
 function handleSaveWorkflow() {
@@ -412,9 +467,9 @@ function handleExport() {
  */
 async function onExportConfirm(fileName) {
   const notification = ElNotification({
-    title: "Exporting...",
-    message: "Generating and zipping files.",
-    type: "info",
+    title: 'Exporting...',
+    message: 'Generating and zipping files.',
+    type: 'info',
     duration: 0, // Stays open until closed
   })
 
@@ -427,7 +482,7 @@ async function onExportConfirm(fileName) {
     )
 
     if (!import.meta.env.DEVOFF) {
-      const link = document.createElement("a")
+      const link = document.createElement('a')
       link.href = URL.createObjectURL(zipBlob)
       link.download = `${fileName}.zip`
       link.click()
@@ -436,7 +491,7 @@ async function onExportConfirm(fileName) {
     }
     store.setLastExportName(fileName)
     notification.close()
-    ElNotification.success({ message: "Export successful!", offset: 50 })
+    ElNotification.success({ message: 'Export successful!', offset: 50 })
   } catch (error) {
     notification.close()
     ElNotification.error(`Export failed: ${error.message}`)
@@ -448,7 +503,7 @@ async function onExportConfirm(fileName) {
  */
 function onSaveConfirm(fileName) {
   // Ensure the filename ends with .json
-  const finalName = fileName.endsWith(".json") ? fileName : `${fileName}.json`
+  const finalName = fileName.endsWith('.json') ? fileName : `${fileName}.json`
 
   const saveState = {
     flow: toObject(),
@@ -464,10 +519,10 @@ function onSaveConfirm(fileName) {
   }
 
   const jsonString = JSON.stringify(saveState, null, 2)
-  const blob = new Blob([jsonString], { type: "application/json" })
+  const blob = new Blob([jsonString], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
 
-  const link = document.createElement("a")
+  const link = document.createElement('a')
   link.href = url
   link.download = finalName
   link.click()
@@ -475,7 +530,7 @@ function onSaveConfirm(fileName) {
   URL.revokeObjectURL(url)
 
   store.setLastSaveName(fileName)
-  ElNotification.success({ message: "Workflow saved!", offset: 50 })
+  ElNotification.success({ message: 'Workflow saved!', offset: 50 })
 }
 
 function mergeModules(newModules) {
@@ -506,7 +561,7 @@ function handleLoadWorkflow(file) {
 
       // Validate the loaded file
       if (!loadedState.flow || !loadedState.store) {
-        throw new Error("Invalid workflow file format.")
+        throw new Error('Invalid workflow file format.')
       }
 
       // Clear the current Vue Flow state.
@@ -532,7 +587,7 @@ function handleLoadWorkflow(file) {
       mergeModules(loadedState.store.availableModules)
 
       ElNotification.success({
-        message: "Workflow loaded successfully!",
+        message: 'Workflow loaded successfully!',
         offset: 50,
       })
     } catch (error) {
@@ -559,10 +614,10 @@ const onResizing = (event) => {
 
 // This function removes the global listeners
 const stopResize = () => {
-  window.removeEventListener("mousemove", onResizing)
-  window.removeEventListener("mouseup", stopResize)
+  window.removeEventListener('mousemove', onResizing)
+  window.removeEventListener('mouseup', stopResize)
   // Re-enable text selection
-  document.body.style.userSelect = ""
+  document.body.style.userSelect = ''
 }
 
 // This function is called on mousedown
@@ -570,10 +625,17 @@ const startResize = (event) => {
   event.preventDefault()
 
   // Add the listeners to the entire window
-  window.addEventListener("mousemove", onResizing)
-  window.addEventListener("mouseup", stopResize)
+  window.addEventListener('mousemove', onResizing)
+  window.addEventListener('mouseup', stopResize)
   // Disable text selection globally while dragging
-  document.body.style.userSelect = "none"
+  document.body.style.userSelect = 'none'
+}
+
+const { vueFlowRef } = useVueFlow()
+const { capture } = useScreenshot()
+
+function doPngScreenshot() {
+  capture(vueFlowRef.value, { shouldDownload: true })
 }
 
 // --- Development Test Data ---
@@ -584,8 +646,8 @@ onMounted(async () => {
     await libcellmlReadyPromise
     handleParametersFile({ raw: testParamertersCSV })
     const result = processModuleData(testData.content, testData.filename)
-    if (result.type !== "success") {
-      throw new Error("Failed to process test module file.")
+    if (result.type !== 'success') {
+      throw new Error('Failed to process test module file.')
     } else {
       store.addModuleFile({
         filename: testData.filename,
@@ -600,7 +662,7 @@ onMounted(async () => {
 /* Basic Styles */
 body {
   margin: 0;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 .app-header {

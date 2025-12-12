@@ -5,8 +5,10 @@ import libcellmlPlugin from "vue3-libcellml.js"
 
 import "element-plus/dist/index.css"
 import "@vue-flow/core/dist/style.css"
+import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/minimap/dist/style.css'
 import '@vue-flow/node-resizer/dist/style.css'
+import '@vue-flow/controls/dist/style.css'
 import "./assets/main.css"
 
 import App from "./App.vue"

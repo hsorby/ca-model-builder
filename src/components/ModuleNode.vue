@@ -4,9 +4,10 @@
     :id="id"
     ref="moduleNode"
     :class="{ selected: selected }"
+    @contextmenu.stop.prevent="openContextMenu"
     @mousedown.capture="StopDrag"
   >
-    <NodeResizer min-width="180" min-height="75" :is-visible="selected" />
+    <NodeResizer min-width="180" min-height="105" :is-visible="selected" />
 
     <el-card :class="[domainTypeClass, 'module-card']" shadow="hover">
       <div class="module-name" @dblclick="startEditing">
@@ -23,7 +24,10 @@
         />
       </div>
       <!-- non-editable label showing CellML component and source file (no white box) -->
-      <div v-if="data.label" class="module-label">{{ data.label }}</div>
+      <div 
+        v-if="data.label"
+        class="module-label">{{ data.label }}
+      </div>
       <div class="button-group">
         <el-dropdown trigger="click" @command="handleSetDomainType">
           <el-button size="small" circle class="module-button">
@@ -64,7 +68,7 @@
       </div>
     </el-card>
 
-    <template v-for="(port, index) in data.ports" :key="port.name" class="port">
+    <template v-for="port in data.ports" :key="port.uid" class="port">
       <el-tooltip
         class="box-item"
         effect="dark"
@@ -73,11 +77,11 @@
         :show-after="1000"
       >
         <Handle
-          :id="'port_' + port.type + '_' + index"
-          :ref="'handle_' + port.type + '_' + index"
+          :id="'port_' + port.type + '_' + port.uid"
+          :ref="'handle_' + port.type + '_' + port.uid"
           type="source"
           :position="portPosition(port.type)"
-          :style="getHandleStyle(index, port)"
+          :style="getHandleStyle(port)"
           class="port-handle"
         />
         <template #content>
@@ -88,21 +92,36 @@
             circle
             plain
             size="small"
-            @click.stop="removePort(index)"
+            @click.stop="removePort(port.uid)"
           />
         </template>
       </el-tooltip>
     </template>
-  </div>
+      <!-- context menu -->
+      <teleport to="body">
+        <div 
+          v-if="contextMenuVisible"
+          ref="contextMenu"
+          class="context-menu"
+          :style="{ top: contextMenuY + 'px', left: contextMenuX + 'px' }"
+          @click.stop
+        >
+          <ul class="context-menu-list">
+            <li @click="openReplacementDialog('replace')">Replace module</li>
+          </ul>
+        </div>
+      </teleport>
+    </div>
 </template>
 
 <script setup>
-import { computed, nextTick, ref, useId } from "vue"
+import { computed, nextTick, ref, useId, onBeforeUnmount, onMounted } from "vue"
 import { Handle, Position, useVueFlow } from "@vue-flow/core"
 import { NodeResizer } from "@vue-flow/node-resizer"
-import { Delete, Edit, Key, Place, Plus } from "@element-plus/icons-vue"
+import { Delete, Edit, Key, Place } from "@element-plus/icons-vue"
+import { filter } from "jszip"
 
-const { updateNodeData, updateNodeInternals } = useVueFlow()
+const { updateNodeData, updateNodeInternals, setEdges } = useVueFlow()
 
 const props = defineProps({
   data: {
@@ -119,9 +138,8 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(["open-edit-dialog"])
+const emit = defineEmits(["open-edit-dialog", "open-replacement-dialog"])
 
-const id = useId()
 const moduleNode = ref(null)
 
 async function openEditDialog() {
@@ -160,30 +178,16 @@ function handleSetDomainType(typeCommand) {
   updateNodeData(props.id, { domainType: newType })
 }
 
-function portCount(aspect) {
-  return props.data.ports.filter((p) => p.type === aspect).length
-}
+function getHandleStyle(port) {
+  const portsOfSameType = props.data.ports.filter(p => p.type === port.type)
+  const n = portsOfSameType.length
 
-function getPositionIndex(fullList, globalIndex) {
-  const targetPosition = fullList[globalIndex].type
-  let positionIndex = -1
-
-  for (let i = 0; i <= globalIndex; i++) {
-    const currentObject = fullList[i]
-
-    if (currentObject.type === targetPosition) {
-      positionIndex++
-    }
-  }
-
-  return positionIndex
-}
-
-function getHandleStyle(index, port) {
-  const n = portCount(port.type)
   // Space between each port.
   const portSpacing = 16
-  const positionIndex = getPositionIndex(props.data.ports, index)
+  const positionIndex = portsOfSameType.findIndex(p => p.uid === port.uid)
+
+  // guard: if not found, fall back to 0
+  const safeIndex = positionIndex === -1 ? 0 : positionIndex
 
   // This calculates the offset from the center
   const offset = portSpacing * (positionIndex - (n - 1) / 2)
@@ -201,12 +205,21 @@ function getHandleStyle(index, port) {
   }
 }
 
-async function removePort(indexToRemove) {
+async function removePort(portIdToRemove) {
+  const port = props.data.ports.find(p => p.uid === portIdToRemove)
+  if (!port) return
+
+  const handleId = `port_${port.type}_${port.uid}`
+
+  // Remove edges connected to this port
+  setEdges(prevEdges =>
+    prevEdges.filter(edge => edge.sourceHandle !== handleId && edge.targetHandle !== handleId)
+  )
+
   // Create a new array filtering out the port we want to remove
-  const newPortsArray = props.data.ports.filter((port, index) => {
-    // Keep the port only if its index does NOT match indexToRemove
-    return index !== indexToRemove
-  })
+  const newPortsArray = props.data.ports.filter(
+    port => port.uid !== portIdToRemove
+  );
 
   // Update the node's data
   updateNodeData(props.id, { ports: newPortsArray })
@@ -219,8 +232,14 @@ async function removePort(indexToRemove) {
 }
 
 const addPort = async (portToAdd) => {
+  // create stable node id
+  const newPort = {
+    ...portToAdd,
+    uid: crypto.randomUUID()
+  }
+
   // Create a new array with the old ports + the new one
-  const newPortsArray = [...props.data.ports, portToAdd]
+  const newPortsArray = [...props.data.ports, newPort]
 
   // Tell Vue Flow to update this node's data
   // This will cause the component to re-render
@@ -265,6 +284,102 @@ function saveEdit() {
   updateNodeData(props.id, { name: editingName.value })
   isEditing.value = false
 }
+
+const contextMenuVisible = ref(false)
+const contextMenuX = ref(0)
+const contextMenuY = ref(0)
+
+const moduleListClickEl = ref(null)
+
+function onDocumentPointerDown(event) {
+  // If the pointer down is inside the context menu, do nothing
+  const path = event.composedPath ? event.composedPath() : (event.path || [])
+  const cm = document.querySelector(".context-menu")
+  if (cm && path.includes(cm)) return
+  closeContextMenu()
+}
+
+function removeMenuOpenListeners() {
+  document.removeEventListener("click", closeContextMenu)   
+  document.removeEventListener("pointerdown", onDocumentPointerDown, true)
+  document.removeEventListener("dragstart", closeContextMenu)
+ if (moduleListClickEl.value) {
+    moduleListClickEl.value.removeEventListener("click", closeContextMenu)
+    moduleListClickEl.value = null
+  }
+}
+
+function closeContextMenu() {
+  contextMenuVisible.value = false
+  removeMenuOpenListeners()
+}
+
+onMounted(() => {
+  document.addEventListener("module-context-open", handleExternalContextOpen)
+  document.addEventListener("contextmenu", handleDocumentContextmenu)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener("module-context-open", handleExternalContextOpen)
+  document.removeEventListener("contextmenu", handleDocumentContextmenu)
+  removeMenuOpenListeners()
+})
+
+async function openContextMenu(event) {
+  event.stopPropagation()
+  event.preventDefault()
+
+  let x = event.clientX
+  let y = event.clientY
+
+  const pad = 8
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const menuWidth = 150
+  const menuHeight = 200
+  if (x + menuWidth + pad > vw) x = vw - menuWidth - pad
+  if (y + menuHeight + pad > vh) y = vh - menuHeight - pad
+
+  contextMenuX.value = x
+  contextMenuY.value = y
+  contextMenuVisible.value = true
+
+  await nextTick()
+
+  // close when clicking elsewhere and pointer down/drag start
+  document.addEventListener("click", closeContextMenu)
+  document.addEventListener("dragstart", closeContextMenu)
+  document.addEventListener("pointerdown", onDocumentPointerDown, true)
+}
+
+async function openReplacementDialog() {
+  emit("open-replacement-dialog", { 
+    nodeId: props.id, 
+    nodeData: props.data,
+    name: props.data.name,
+    portOptions: props.data.portOptions,
+    portLabels: props.data.portLabels, 
+  })
+  closeContextMenu()
+}
+
+// Close when another module opens a context menu or when right-click happens outside this node
+function handleExternalContextOpen(e) {
+  const openId = e?.detail?.nodeId ?? null
+  if (openId !== props.id) {
+    closeContextMenu()
+  }
+}
+
+function handleDocumentContextmenu(e) {
+  // If the right-click target is not inside this module node, close the menu.
+  if (!moduleNode.value) return
+  const path = e.composedPath ? e.composedPath() : (e.path || [])
+  if (!path.includes(moduleNode.value)) {
+    closeContextMenu()
+  }
+}
+
 </script>
 
 <style scoped>
@@ -287,7 +402,7 @@ function saveEdit() {
 }
 
 .module-card {
-  pointer-events: none;
+  pointer-events: auto;
   width: 100%;
   height: 100%;
   display: flex;
@@ -337,6 +452,33 @@ div.module-name,
   overflow: hidden;
   text-overflow: ellipsis;
   user-select: none;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 10000;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  min-width: 180px;
+  padding: 6px 0;
+}
+
+.context-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.context-menu-list li {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.context-menu-list li:hover {
+  background: #f5f7fa;
 }
 
 /* 
