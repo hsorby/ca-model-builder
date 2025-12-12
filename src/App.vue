@@ -83,7 +83,14 @@
               :pannable="true"
               :zoomable="true"
             />
-            <Controls />
+            <Controls>
+              <ControlButton 
+                :disabled="screenshotDisabled" 
+                title="PNG Screenshot" 
+                @click="doPngScreenshot">
+                <CameraFilled />
+              </ControlButton>
+            </Controls>
             <template #node-moduleNode="props">
               <ModuleNode
                 :id="props.id"
@@ -141,8 +148,8 @@
 import { computed, inject, nextTick, onMounted, ref } from "vue"
 import { ElNotification } from "element-plus"
 import { MarkerType, useVueFlow, VueFlow } from "@vue-flow/core"
-import { DCaret } from "@element-plus/icons-vue"
-import { Controls } from "@vue-flow/controls"
+import { DCaret, CameraFilled } from "@element-plus/icons-vue"
+import { Controls, ControlButton } from "@vue-flow/controls"
 import { MiniMap } from "@vue-flow/minimap"
 import Papa from "papaparse"
 
@@ -154,6 +161,7 @@ import useDragAndDrop from "./composables/useDnD"
 import EditModuleDialog from "./components/EditModuleDialog.vue"
 import ModuleReplacementDialog from "./components/ModuleReplacementDialog.vue"  
 import SaveDialog from "./components/SaveDialog.vue"
+import { useScreenshot } from "./services/useScreenshot"
 import { generateExportZip } from "./services/caExport"
 
 const {
@@ -210,8 +218,13 @@ const connectionLineOptions = ref({
 })
 
 const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
+
 const exportAvailable = computed(
   () => nodes.value.length > 0 && store.parameterData.length > 0
+)
+
+const screenshotDisabled = computed(
+  () => nodes.value.length === 0 && vueFlowRef.value !== null
 )
 
 function onOpenEditDialog(eventPayload) {
@@ -573,6 +586,13 @@ const startResize = (event) => {
   window.addEventListener("mouseup", stopResize)
   // Disable text selection globally while dragging
   document.body.style.userSelect = "none"
+}
+
+const { vueFlowRef } = useVueFlow();
+const { capture } = useScreenshot();
+
+function doPngScreenshot() {
+  capture(vueFlowRef.value, { shouldDownload: true});
 }
 
 // --- Development Test Data ---
