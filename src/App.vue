@@ -223,7 +223,7 @@ const exportAvailable = computed(
 )
 
 const screenshotDisabled = computed(
-  () => nodes.value.length == 0 && vueFlowRef.value != null
+  () => nodes.value.length === 0 && vueFlowRef.value !== null
 )
 
 function onOpenEditDialog(eventPayload) {
