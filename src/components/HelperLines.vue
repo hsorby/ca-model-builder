@@ -4,79 +4,74 @@
 
 <script setup>
 import { useVueFlow } from '@vue-flow/core'
-import { computed, ref, watch } from 'vue'
+import { ref, watchEffect } from 'vue'
 
 const props = defineProps({
-  horizontal: Number,
-  vertical: Number,
-  alignment: String,
+  horizontal: Number, // Position in Graph Coordinates
+  vertical: Number, // Position in Graph Coordinates
+  alignment: String, // 'centre' or other
 })
 
-const horizontal = computed(() => props.horizontal)
-const vertical = computed(() => props.vertical)
-
 const { viewport, dimensions } = useVueFlow()
-
 const canvasRef = ref(null)
 
-const width = computed(() => dimensions.value.width)
-const height = computed(() => dimensions.value.height)
-
-const x = computed(() => viewport.value.x)
-const y = computed(() => viewport.value.y)
-const zoom = computed(() => viewport.value.zoom)
+// Define styles in a config object.
+const LINE_STYLES = {
+  centre: { color: '#394455', width: 2 },
+  default: { color: '#236AD5', width: 1 },
+}
 
 function updateCanvasHelperLines() {
   const canvas = canvasRef.value
   const ctx = canvas?.getContext('2d')
+  if (!ctx || !canvas) return
 
-  if (!ctx || !canvas) {
-    return
-  }
-
-  const dpi = window.devicePixelRatio
-  canvas.width = width.value * dpi
-  canvas.height = height.value * dpi
-
+  // Handle DPI scaling for crisp lines.
+  const dpi = window.devicePixelRatio || 1
+  canvas.width = dimensions.value.width * dpi
+  canvas.height = dimensions.value.height * dpi
   ctx.scale(dpi, dpi)
-  ctx.clearRect(0, 0, width.value, height.value)
+
+  // Clear and set global settings.
+  ctx.clearRect(0, 0, dimensions.value.width, dimensions.value.height)
   ctx.globalAlpha = 0.35
   ctx.setLineDash([6, 6])
 
-  if (typeof vertical.value === 'number') {
+  // Encapsulate drawing logic.
+  const drawGuide = (position, isVertical) => {
+    // Determine style based on alignment prop.
+    const style = LINE_STYLES[props.alignment] || LINE_STYLES.default
+    ctx.strokeStyle = style.color
+    ctx.lineWidth = style.width
+
+    // Calculate screen coordinate from graph coordinate.
+    // Graph -> Screen formula: (GraphPos * Zoom) + Pan
+    const offset = isVertical ? viewport.value.x : viewport.value.y
+    const screenPos = position * viewport.value.zoom + offset
+
     ctx.beginPath()
-    ctx.moveTo(vertical.value * zoom.value + x.value, 0)
-    ctx.lineTo(vertical.value * zoom.value + x.value, height.value)
-    if (props.alignment === 'centre') {
-      ctx.strokeStyle = '#394455'
-      ctx.lineWidth = 2
+    if (isVertical) {
+      ctx.moveTo(screenPos, 0)
+      ctx.lineTo(screenPos, dimensions.value.height)
     } else {
-      ctx.strokeStyle = '#236AD5'
-      ctx.lineWidth = 1
+      ctx.moveTo(0, screenPos)
+      ctx.lineTo(dimensions.value.width, screenPos)
     }
     ctx.stroke()
   }
 
-  if (typeof horizontal.value === 'number') {
-    ctx.beginPath()
-    ctx.moveTo(0, horizontal.value * zoom.value + y.value)
-    ctx.lineTo(width.value, horizontal.value * zoom.value + y.value)
-    if (props.alignment === 'centre') {
-      ctx.strokeStyle = '#394455'
-      ctx.lineWidth = 2
-    } else {
-      ctx.strokeStyle = '#236AD5'
-      ctx.lineWidth = 1
-    }
-    ctx.stroke()
+  // Draw lines if they are valid numbers.
+  if (Number.isFinite(props.vertical)) {
+    drawGuide(props.vertical, true)
+  }
+
+  if (Number.isFinite(props.horizontal)) {
+    drawGuide(props.horizontal, false)
   }
 }
 
-watch(
-  [width, height, x, y, zoom, horizontal, vertical],
-  () => updateCanvasHelperLines(),
-  { immediate: true, deep: true }
-)
+// watchEffect automatically tracks dimensions, viewport, and props used inside the function.
+watchEffect(updateCanvasHelperLines)
 </script>
 
 <style scoped>
