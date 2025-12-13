@@ -26,18 +26,6 @@
             </el-button>
           </el-upload>
 
-          <el-upload
-            action="#"
-            :auto-upload="false"
-            :on-change="handleVesselArrayFile"
-            :show-file-list="false"
-            style="margin-left: 10px"
-          >
-            <el-button :disabled="libcellml.status !== 'ready'" type="primary">
-              Load Vessel Array
-            </el-button>
-          </el-upload>
-
           <el-divider direction="vertical" style="margin: 0 15px" />
 
           <el-upload
@@ -47,7 +35,7 @@
             :show-file-list="false"
             accept=".json"
           >
-            <el-button type="success">Load Model</el-button>
+            <el-button type="success">Load Workspace</el-button>
           </el-upload>
 
           <el-button
@@ -55,8 +43,25 @@
             @click="handleSaveWorkflow"
             style="margin-left: 10px"
           >
-            Save Model
+            Save Workspace
           </el-button>
+
+          <el-divider direction="vertical" style="margin: 0 15px" />
+
+          <el-upload
+            action="#"
+            :auto-upload="false"
+            :on-change="handleVesselArrayFile"
+            :show-file-list="false"
+          >
+            <el-button 
+              :disabled="libcellml.status !== 'ready'"
+              type="info"
+              >
+              Load Config Files
+            </el-button>
+          </el-upload>
+
 
           <el-button
             type="info"
@@ -64,7 +69,7 @@
             style="margin-left: 10px"
             :disabled="!exportAvailable"
           >
-            Export Model
+            Export Config Files
           </el-button>
         </div>
       </div>
