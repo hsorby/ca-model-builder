@@ -112,7 +112,9 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
         variables: [info.option] || [],
       }
 
-      if (isMultiPort) {
+      if (info.isMultiPortSum) {
+        portEntry.multi_port = "Sum"
+      } else if (isMultiPort) {
         portEntry.multi_port = "True"
       }
 
