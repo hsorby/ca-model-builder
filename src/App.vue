@@ -297,8 +297,6 @@ async function onConfigUploadConfirm(eventPayload) {
   // convert the uploaded config files into workflow format and load them
 
   loadFromConfigFiles(eventPayload)
-
-  console.log('Processed config files:', eventPayload.vesselArray)
 }
 
 function onOpenEditDialog(eventPayload) {

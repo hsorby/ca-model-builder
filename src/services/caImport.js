@@ -1,22 +1,49 @@
 import { useVueFlow, MarkerType } from "@vue-flow/core"
 import { nextTick } from "vue"
 import { ElNotification } from 'element-plus'
+import { useBuilderStore } from '../stores/builderStore'
 
 export function useLoadFromConfigFiles() {
     const { nodes, edges, addNodes, setViewport, addEdges } = useVueFlow()
-
     const PORT_SIDES = ["left", "right", "top", "bottom"]
-    
+    const usedPorts = new Map()
+    const moduleLookup = new Map()
+    const store = useBuilderStore()
+
     function checkCellMLModulesExist(modules) {
-        // For now, we assume all modules exist.
-        return true
+       
+        // Check available modules in the store
+        store.availableModules.forEach(file => {
+        const filename = file.filename
+
+        file.modules.forEach(module => {
+            const key = `${module.name}::${filename}`
+            moduleLookup.set(key, module)
+        })
+        })
+
+        // Collect missing modules
+        const missingModules = []
+
+        console.log(moduleLookup)
+        modules.forEach(module => {
+        const key = `${module.module_type}::${module.module_file}`
+            if (!moduleLookup.has(key)) {
+                missingModules.push(key)
+            }
+        })
+
+        if (missingModules.length > 0) {
+            console.warn("Missing modules:", missingModules)
+            return false
+        }
+
+    return true
     }
 
     function randomPortSide() {
         return PORT_SIDES[Math.floor(Math.random() * PORT_SIDES.length)]
     }
-
-    const usedPorts = new Map()
 
     function nextUnusedPort(node, sidePriority) {
         const used = usedPorts.get(node.id) ?? []
@@ -63,7 +90,6 @@ export function useLoadFromConfigFiles() {
     function getHandleId(port) {
         return `port_${port.type}_${port.uid}`
     }
-
 
     async function loadFromConfigFiles(configFiles) {
 
@@ -148,11 +174,14 @@ export function useLoadFromConfigFiles() {
 
             addEdges(newEdges)
 
+            // Populate the port definitions and labels on each module
 
-        } catch (error) {
-            ElNotification.error(`Failed to load workflow: ${error.message}`)
-        }
-        }
+
+
+    } catch (error) {
+        ElNotification.error(`Failed to load workflow: ${error.message}`)
+    }
+    }
         
     return { loadFromConfigFiles }
 }
