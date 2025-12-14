@@ -172,9 +172,35 @@ const handleVesselArray = (file) => {
 const handleModuleConfig = (file) => {
   moduleConfigName.value = file.name
 
-  // here I will add logic to confirm this is a valid module config file
-  moduleConfigValid.value = true
-  moduleConfig.data = null
+  let reader = new FileReader()
+  reader.readAsText(file.raw)
+
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(reader.result)
+
+
+      if (!(parsed.length > 0 &&
+        "entrance_ports" in parsed[0] &&
+        "exit_ports" in parsed[0] &&
+        "general_ports" in parsed[0] &&
+        "BC_type" in parsed[0] &&
+        "vessel_type" in parsed[0] &&
+        "module_format" in parsed[0] &&
+        "module_file" in parsed[0] &&
+        "module_type" in parsed[0])
+      ) {
+        throw new Error("Invalid module configuration file format.")
+      } 
+
+      moduleConfig.data = parsed
+      moduleConfigValid.value = true
+    } catch (error) {
+      ElNotification.error(error.message),
+      moduleConfigValid.value = false 
+      moduleConfigName.value = null
+    }
+  }
 }
 
 const vesselArrayName = ref(null)
