@@ -187,6 +187,7 @@ import UploadConfigDialog from './components/UploadConfigDialog.vue'
 import HelperLines from './components/HelperLines.vue'
 import { useScreenshot } from './services/useScreenshot'
 import { generateExportZip } from './services/caExport'
+import { useLoadFromConfigFiles } from './services/caImport'
 import { getHelperLines } from './utils/utils'
 
 const {
@@ -259,7 +260,7 @@ const testData = {
 }
 
 const store = useBuilderStore()
-
+const { loadFromConfigFiles } = useLoadFromConfigFiles()
 const libcellmlReadyPromise = inject('$libcellml_ready')
 const libcellml = inject('$libcellml')
 const editDialogVisible = ref(false)
@@ -293,7 +294,11 @@ function onOpenConfigUploadDialog() {
 }
 
 async function onConfigUploadConfirm(eventPayload) {
-  console.log("Config files received:", eventPayload)
+  // convert the uploaded config files into workflow format and load them
+
+  loadFromConfigFiles(eventPayload)
+
+  console.log('Processed config files:', eventPayload.vesselArray)
 }
 
 function onOpenEditDialog(eventPayload) {
