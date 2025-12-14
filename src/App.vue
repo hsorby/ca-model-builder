@@ -48,20 +48,13 @@
 
           <el-divider direction="vertical" style="margin: 0 15px" />
 
-          <el-upload
-            action="#"
-            :auto-upload="false"
-            :on-change="handleVesselArrayFile"
-            :show-file-list="false"
-          >
-            <el-button 
-              :disabled="libcellml.status !== 'ready'"
-              type="info"
-              >
-              Load Config Files
-            </el-button>
-          </el-upload>
-
+          <el-button 
+            type="info"
+            @click="onOpenConfigUploadDialog"
+            :disabled="libcellml.status !== 'ready'"
+            >
+            Load Config Files
+          </el-button>
 
           <el-button
             type="info"
@@ -127,11 +120,19 @@
     @confirm="onEditConfirm"
   />
 
+  <UploadConfigDialog
+    v-model="configDialogVisible"
+    :initial-vessel-array="null"
+    :initial-module-config="null"
+    @confirm="onConfigUploadConfirm"
+  />
+
   <SaveDialog
     v-model="saveDialogVisible"
     @confirm="onSaveConfirm"
     :default-name="store.lastSaveName"
   />
+
   <SaveDialog
     v-model="exportDialogVisible"
     @confirm="onExportConfirm"
@@ -145,7 +146,7 @@
 import { computed, inject, nextTick, onMounted, ref } from "vue"
 import { ElNotification } from "element-plus"
 import { MarkerType, useVueFlow, VueFlow } from "@vue-flow/core"
-import { DCaret } from "@element-plus/icons-vue"
+import { DCaret, Upload } from "@element-plus/icons-vue"
 import { Controls } from "@vue-flow/controls"
 import { MiniMap } from "@vue-flow/minimap"
 import Papa from "papaparse"
@@ -157,6 +158,7 @@ import ModuleNode from "./components/ModuleNode.vue"
 import useDragAndDrop from "./composables/useDnD"
 import EditModuleDialog from "./components/EditModuleDialog.vue"
 import SaveDialog from "./components/SaveDialog.vue"
+import UploadConfigDialog from "./components/UploadConfigDialog.vue"
 import { generateExportZip } from "./services/caExport"
 
 const {
@@ -199,6 +201,7 @@ const libcellmlReadyPromise = inject("$libcellml_ready")
 const libcellml = inject("$libcellml")
 const editDialogVisible = ref(false)
 const saveDialogVisible = ref(false)
+const configDialogVisible = ref(false)
 const exportDialogVisible = ref(false)
 const currentEditingNode = ref({ nodeId: "", ports: [], name: "" })
 const asideWidth = ref(250)
@@ -215,6 +218,14 @@ const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
 const exportAvailable = computed(
   () => nodes.value.length > 0 && store.parameterData.length > 0
 )
+
+function onOpenConfigUploadDialog() {
+  configDialogVisible.value = true
+}
+
+async function onConfigUploadConfirm(eventPayload) {
+  console.log("Config files received:", eventPayload)
+}
 
 function onOpenEditDialog(eventPayload) {
   currentEditingNode.value = {
@@ -377,50 +388,6 @@ const handleParametersFile = (file) => {
       })
     },
   })
-}
-
-const handleVesselArrayFile = (file) => {
-  if (!file) {
-    ElNotification.error("No file selected.")
-    return
-  }
-
-  Papa.parse(file.raw, {
-  header: true, // Converts row 1 to object keys
-  skipEmptyLines: true,
-
-  complete: (results) => {
-    try{
-      // results.data will be an array of objects
-      // e.g., [{ name: 'a', BC_type: 'nn', vessel_type: 'a', inp_vessels: space separated list, out_vessels: space separated list }, { object 2 }]
-      console.log("Vessel Array Data:", results.data)
-
-      // Error handle - confirm that the file loaded has the required columns (i.e., is a valid vessel array file)
-      if (!(results.data.length > 0 &&
-        "name" in results.data[0] &&
-        "BC_type" in results.data[0] &&
-        "vessel_type" in results.data[0] &&
-        "inp_vessels" in results.data[0] &&
-        "out_vessels" in results.data[0])
-      ) {
-        throw new Error("Invalid vessel array file format.")
-      } 
-
-      // check that the required modules are present in the module list
-      console.log("Available Modules:", store.availableModules)
-    } catch (error) {
-      ElNotification.error(error.message)
-    }
-
-  },
-
-  error: (err) => {
-    ElNotification.error({
-      title: "CSV Parse Error",
-      message: err.message,
-    })
-  },
-})
 }
 
 function handleSaveWorkflow() {
