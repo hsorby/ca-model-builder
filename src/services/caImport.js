@@ -4,12 +4,44 @@ import { ElNotification } from 'element-plus'
 
 export function useLoadFromConfigFiles() {
     const { nodes, edges, addNodes, setViewport } = useVueFlow()
+
+    const PORT_SIDES = ["left", "right", "top", "bottom"]
     
     function checkCellMLModulesExist(modules) {
-        // Placeholder function: In a real implementation, this would check the module store.
         // For now, we assume all modules exist.
         return true
     }
+
+    function randomPortSide() {
+        return PORT_SIDES[Math.floor(Math.random() * PORT_SIDES.length)]
+    }
+
+    function buildPorts(vessel) {
+        const ports = []
+
+        if (vessel.inp_vessels) {
+            vessel.inp_vessels.split(" ").forEach(name => {
+            ports.push({
+                uid: crypto.randomUUID(),
+                type: randomPortSide(),
+                label: name,
+            })
+            })
+        }
+
+        if (vessel.out_vessels) {
+            vessel.out_vessels.split(" ").forEach(name => {
+            ports.push({
+                uid: crypto.randomUUID(),
+                type: randomPortSide(),
+                label: name,
+            })
+            })
+        }
+
+    return ports
+    }
+
 
     async function loadFromConfigFiles(configFiles) {
 
@@ -41,6 +73,7 @@ export function useLoadFromConfigFiles() {
                     ...vessel,
                     name: vessel.name,
                     label: vessel.name,
+                    ports: buildPorts(vessel),
                 },
             }))
 
