@@ -12,14 +12,16 @@ export function useLoadFromConfigFiles() {
 
     function checkCellMLModulesExist(modules) {
        
+        console.log(store.availableModules[0])
+
         // Check available modules in the store
         store.availableModules.forEach(file => {
-        const filename = file.filename
+            const filename = file.filename
 
-        file.modules.forEach(module => {
-            const key = `${module.name}::${filename}`
-            moduleLookup.set(key, module)
-        })
+            file.modules.forEach(module => {
+                const key = `${module.componentName}`
+                moduleLookup.set(key, module)
+            })
         })
 
         // Collect missing modules
@@ -27,7 +29,7 @@ export function useLoadFromConfigFiles() {
 
         console.log(moduleLookup)
         modules.forEach(module => {
-        const key = `${module.module_type}::${module.module_file}`
+        const key = `${module.module_type}`
             if (!moduleLookup.has(key)) {
                 missingModules.push(key)
             }
@@ -108,28 +110,35 @@ export function useLoadFromConfigFiles() {
 
             let idCounter = 0
 
-            //const compLabel = moduleData.componentName 
-            //const filePart = moduleData.sourceFile 
-            //const label = filePart ? `${compLabel} — ${filePart}` : compLabel
+            const filteredModules = configFiles.moduleConfig.filter(module =>
+                configFiles.vesselArray.some(vessel => vessel.vessel_type === module.vessel_type)
+            )
 
             // Build nodes from configFiles data
-            const newNodes = configFiles.vesselArray.map((vessel, index) => ({
-                id: `dndnode_${idCounter++}`,
-                type: "moduleNode",
-                position: { x: index * 200, y: 100 }, 
-                data: {
-                    ...vessel,
-                    name: vessel.name,
-                    label: vessel.name,
-                    ports: buildPorts(vessel),
-                },
-            }))
+            const newNodes = configFiles.vesselArray.map((vessel, index) => {
+                // Find corresponding module metadata
+                const moduleData = filteredModules.find(module => module.vessel_type === vessel.vessel_type)
+
+                return {
+                    id: `dndnode_${idCounter++}`,
+                    type: "moduleNode",
+                    position: { x: index * 200, y: 100 },
+                    data: {
+                    ...vessel,                      // basic vessel info (name, inp_vessels, out_vessels)
+                    ...moduleData,                  // additional module metadata (module_file, module_type, etc.)
+                    name: vessel.name,              // keep original node name
+                    ports: buildPorts(vessel),      // build ports from inp/out vessels
+                    label: `${moduleData.module_type} — ${moduleData.module_file}`
+                    },
+                }
+            })
+
 
             // create look up table for nodes
             const nodeByName = new Map(
                 newNodes.map(node => [node.data.name, node])
             )
-
+            
             // Add new nodes to the flow
             addNodes(newNodes)
 
