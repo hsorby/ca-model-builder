@@ -87,39 +87,32 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
       .map((name) => nodeNameObjMap.get(name))
       .filter(Boolean) // Filter out any undefined/missing nodes
 
-    let generalPorts = []
-    for (const info of node.data.portLabels || []) {
-      const currentPortLabel = info.label
+      const portTypes = ["general_ports", "entrance_ports", "exit_ports"]
+      const portsByType = {}
 
-      // Count how many *connected nodes* have this *same port label*
-      let portLabelCountOnConnectedNodes = 0
-      for (const connectedNode of connectedNodeObjects) {
-        // Check if the source node has *at least one* port with the same label
-        const hasLabel = (connectedNode.data.portLabels || []).some(
-          (pl) => pl.label === currentPortLabel,
-        )
-        if (hasLabel) {
-          portLabelCountOnConnectedNodes++
-        }
+      for (const type of portTypes) {
+        portsByType[type] = (node.data.portLabels || [])
+          .filter(pl => pl.portType === type)
+          .map(info => {
+            const currentPortLabel = info.label
+
+            // Count connected nodes with same port label
+            const connectedCount = connectedNodeObjects.reduce((count, connectedNode) => {
+              return count + ((connectedNode.data.portLabels || []).some(pl => pl.label === currentPortLabel) ? 1 : 0)
+            }, 0)
+
+            const portEntry = {
+              port_type: currentPortLabel,
+              variables: [info.option] || [],
+            }
+
+            if (info.isMultiPortSum) portEntry.multi_port = "Sum"
+            else if (connectedCount > 1) portEntry.multi_port = "True"
+
+            return portEntry
+          })
       }
 
-      // Check the multi_port condition
-      const isMultiPort = portLabelCountOnConnectedNodes > 1
-
-      // Create the port entry
-      const portEntry = {
-        port_type: currentPortLabel,
-        variables: [info.option] || [],
-      }
-
-      if (info.isMultiPortSum) {
-        portEntry.multi_port = "Sum"
-      } else if (isMultiPort) {
-        portEntry.multi_port = "True"
-      }
-
-      generalPorts.push(portEntry)
-    }
     let variablesAndUnits = []
     for (const variable of node.data.portOptions || []) {
       variablesAndUnits.push([
@@ -136,9 +129,9 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
       module_format: "cellml",
       module_file: node.data.sourceFile,
       module_type: node.data.componentName,
-      entrance_ports: node.data.entrancePorts || [],
-      exit_ports: node.data.exitPorts || [],
-      general_ports: generalPorts || [],
+      entrance_ports: portsByType.entrance_ports || [],
+      exit_ports: portsByType.exit_ports || [],
+      general_ports: portsByType.general_ports || [],
       variables_and_units: variablesAndUnits,
     })
     vessel_array.push({
