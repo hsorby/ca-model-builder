@@ -29,7 +29,7 @@ export function useLoadFromConfigFiles() {
       setViewport({ x: 0, y: 0, zoom: 1 })
 
       const { nodes: newNodes, edges: newEdges } =
-        buildWorkflowGraph(configFiles)
+        buildWorkflowGraph(store.availableModules, configFiles)
 
       addNodes(newNodes)
       await nextTick()

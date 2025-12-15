@@ -295,8 +295,6 @@ function onOpenConfigUploadDialog() {
 }
 
 async function onConfigUploadConfirm(eventPayload) {
-  // convert the uploaded config files into workflow format and load them
-
   loadFromConfigFiles(eventPayload)
 }
 

@@ -46,13 +46,41 @@ function buildPorts(vessel) {
   return ports
 }
 
-export function buildWorkflowNodes(vessels, moduleConfig) {
+function parseGeneralPorts(generalPorts) {
+  return generalPorts
+    .filter(port => port.port_type && Array.isArray(port.variables) && port.variables.length > 0)
+    .map(port => ({
+        label: port.port_type,
+        option: [...port.variables][0], // currently limited to a single variable per port label
+        isMultiPortSum: port.multi_port == "Sum"
+    }))
+}
+
+function buildPortLabels(moduleData) {
+  const generalPortLabels = parseGeneralPorts(moduleData.general_ports)
+
+  // eventually will need to parse directional port labels and combine with general port labels
+  const finalPortLabels = generalPortLabels
+
+  return finalPortLabels
+}
+
+export function buildWorkflowNodes(availableModules, vessels, moduleConfig) {
   let idCounter = 0
 
+  const moduleLookup = new Map()
+  availableModules.forEach(file => {
+    file.modules.forEach(mod => {
+        moduleLookup.set(`${file.filename}::${mod.componentName}`, mod)
+    })
+  })
+
   return vessels.map((vessel, index) => {
-    const moduleData = moduleConfig.find(
+    const moduleConfigData = moduleConfig.find(
       m => m.vessel_type === vessel.vessel_type
     )
+
+    const moduleData = moduleLookup.get(`${moduleConfigData.module_file}::${moduleConfigData.module_type}`)
 
     return {
       id: `dndnode_${idCounter++}`,
@@ -64,8 +92,10 @@ export function buildWorkflowNodes(vessels, moduleConfig) {
         ...moduleData,
         name: vessel.name,
         ports: buildPorts(vessel),
-        label: `${moduleData.module_type} — ${moduleData.module_file}`,
+        label: `${moduleData.componentName} — ${moduleData.sourceFile}`,
+        portLabels: buildPortLabels(moduleConfigData),
       },
     }
   })
 }
+

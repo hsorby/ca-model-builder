@@ -2,8 +2,9 @@ import { buildWorkflowNodes } from "./buildNodes"
 import { buildWorkflowEdges } from "./buildEdges"
 import { createPortAllocator } from "./portAllocator"
 
-export function buildWorkflowGraph(configFiles) {
+export function buildWorkflowGraph(store, configFiles) {
   const nodes = buildWorkflowNodes(
+    store,
     configFiles.vesselArray,
     configFiles.moduleConfig
   )
