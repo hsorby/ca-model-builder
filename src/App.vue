@@ -189,6 +189,7 @@ import { useScreenshot } from './services/useScreenshot'
 import { generateExportZip } from './services/caExport'
 import { useLoadFromConfigFiles } from './services/caImport'
 import { getHelperLines } from './utils/utils'
+import { WORKSPACE_LIMITS } from './constants/workflow'
 
 const {
   addEdges,
@@ -628,8 +629,8 @@ function handleLoadWorkflow(file) {
 }
 
 const finiteTranslateExtent = [
-  [-2000, -2000],
-  [2000, 2000],
+  [WORKSPACE_LIMITS.MIN_X, WORKSPACE_LIMITS.MIN_Y],
+  [WORKSPACE_LIMITS.MAX_X, WORKSPACE_LIMITS.MAX_Y],
 ]
 
 const onResizing = (event) => {
