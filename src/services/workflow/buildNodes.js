@@ -1,6 +1,7 @@
 import { randomPortSide } from "../../utils/ports"
 import { PLACEMENT_LIMITS, NODE_HEIGHT, NODE_WIDTH, NODE_MARGIN_X, NODE_MARGIN_Y } from "../../constants/workflow"
 
+
 function computeNodePosition(index) {
   const nodesPerRow = Math.floor((PLACEMENT_LIMITS.MAX_X - PLACEMENT_LIMITS.MIN_X) / (NODE_WIDTH + NODE_MARGIN_X))
   const row = Math.floor(index / nodesPerRow)
@@ -46,23 +47,22 @@ function buildPorts(vessel) {
   return ports
 }
 
-function parseGeneralPorts(generalPorts) {
-  return generalPorts
-    .filter(port => port.port_type && Array.isArray(port.variables) && port.variables.length > 0)
-    .map(port => ({
-        label: port.port_type,
-        option: [...port.variables][0], // currently limited to a single variable per port label
-        isMultiPortSum: port.multi_port == "Sum"
-    }))
-}
-
 function buildPortLabels(moduleData) {
-  const generalPortLabels = parseGeneralPorts(moduleData.general_ports)
-
-  // eventually will need to parse directional port labels and combine with general port labels
-  const finalPortLabels = generalPortLabels
-
-  return finalPortLabels
+  return Object.entries(moduleData)
+    .filter(([key, value]) =>
+      ["general_ports", "entrance_ports", "exit_ports"].includes(key) && 
+      Array.isArray(value)
+    )
+    .flatMap(([type, ports]) => 
+      ports
+        .filter(p => p.port_type && p.variables?.length)
+        .map(p => ({
+          portType: type,
+          label: p.port_type,
+          option: p.variables[0],
+          isMultiPortSum: p.multi_port === "Sum",
+        }))
+    )
 }
 
 export function buildWorkflowNodes(availableModules, vessels, moduleConfig) {

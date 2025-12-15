@@ -147,15 +147,15 @@ const editableData = reactive({
 
 const portTypeOptions = [
   {
-    value: 'general',
+    value: 'general_ports',
     label: 'G',
   },
   {
-    value: 'input',
+    value: 'entrance_ports',
     label: 'I',
   },
   {
-    value: 'output',
+    value: 'exit_ports',
     label: 'O',
   },
 ];
@@ -220,7 +220,7 @@ function isOptionDisabled(optionName, currentSelection) {
 }
 
 function addPortLabel() {
-  editableData.portLabels.push({ portType: "general", option: "", label: "", isMultiPortSum: false })
+  editableData.portLabels.push({ portType: "general_ports", option: "", label: "", isMultiPortSum: false })
 }
 
 function deletePortLabel(index) {
