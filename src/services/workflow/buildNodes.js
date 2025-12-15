@@ -1,13 +1,13 @@
 import { randomPortSide } from "../../utils/ports"
-import { WORKSPACE_LIMITS, NODE_HEIGHT, NODE_WIDTH, NODE_MARGIN_X, NODE_MARGIN_Y } from "../../constants/workflow"
+import { PLACEMENT_LIMITS, NODE_HEIGHT, NODE_WIDTH, NODE_MARGIN_X, NODE_MARGIN_Y } from "../../constants/workflow"
 
 function computeNodePosition(index) {
-  const nodesPerRow = Math.floor((WORKSPACE_LIMITS.MAX_X - WORKSPACE_LIMITS.MIN_X) / (NODE_WIDTH + NODE_MARGIN_X))
+  const nodesPerRow = Math.floor((PLACEMENT_LIMITS.MAX_X - PLACEMENT_LIMITS.MIN_X) / (NODE_WIDTH + NODE_MARGIN_X))
   const row = Math.floor(index / nodesPerRow)
   const col = index % nodesPerRow
 
-  const x = WORKSPACE_LIMITS.MIN_X + col * (NODE_WIDTH + NODE_MARGIN_X)
-  const y = WORKSPACE_LIMITS.MIN_Y + row * (NODE_HEIGHT + NODE_MARGIN_Y)
+  const x = PLACEMENT_LIMITS.MIN_X + col * (NODE_WIDTH + NODE_MARGIN_X)
+  const y = PLACEMENT_LIMITS.MIN_Y + row * (NODE_HEIGHT + NODE_MARGIN_Y)
 
   return { x, y }
 }
@@ -58,6 +58,7 @@ export function buildWorkflowNodes(vessels, moduleConfig) {
       id: `dndnode_${idCounter++}`,
       type: "moduleNode",
       position: computeNodePosition(index),
+      style: { width: NODE_WIDTH + "px", height: NODE_HEIGHT + "px" },
       data: {
         ...vessel,
         ...moduleData,
