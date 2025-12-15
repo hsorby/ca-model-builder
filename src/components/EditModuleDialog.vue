@@ -22,6 +22,7 @@
 
       <label class="el-form-label">Port Labels:</label>
       <div v-if="editableData.portLabels.length>0" class="port-header-row">
+        <span class="port-type-header">Type</span>
         <span class="port-label-header">Label</span>
         <span class="port-select-header">Option</span>
         <span class="port-checkbox-header">Sum?</span>
@@ -32,6 +33,17 @@
         :key="index"
         class="port-label-row"
       >
+        <el-select
+          v-model="port.portType"
+          class="port-type-select"
+        >
+        <el-option
+            v-for="options in portTypeOptions"
+            :key="options.value"
+            :label="options.label"
+            :value="options.value"
+          />
+        </el-select>
         <el-input
           v-model="port.label"
           placeholder="Enter Label"
@@ -133,6 +145,21 @@ const editableData = reactive({
   portLabels: [], // Will hold objects like { option: 'var_a', label: 'label_1' }
 })
 
+const portTypeOptions = [
+  {
+    value: 'general',
+    label: 'G',
+  },
+  {
+    value: 'input',
+    label: 'I',
+  },
+  {
+    value: 'output',
+    label: 'O',
+  },
+];
+
 function resetForm() {
   editableData.name = props.initialName
   editableData.portLabels = JSON.parse(
@@ -193,7 +220,7 @@ function isOptionDisabled(optionName, currentSelection) {
 }
 
 function addPortLabel() {
-  editableData.portLabels.push({ option: "", label: "", isMultiPortSum: false })
+  editableData.portLabels.push({ portType: "general", option: "", label: "", isMultiPortSum: false })
 }
 
 function deletePortLabel(index) {
@@ -229,6 +256,11 @@ function deletePortLabel(index) {
 .port-label {
   flex: 1;
   min-width: 150px;
+}
+.port-type-header,
+.port-type-select {
+  flex: 1;
+  min-width: 60px;
 }
 .port-select-header,
 .port-select {
