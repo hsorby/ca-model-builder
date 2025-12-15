@@ -63,6 +63,7 @@ function buildPortLabels(moduleData) {
           isMultiPortSum: p.multi_port === "Sum",
         }))
     )
+
 }
 
 export function buildWorkflowNodes(availableModules, vessels, moduleConfig) {
