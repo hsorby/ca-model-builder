@@ -196,6 +196,7 @@ import HelperLines from './components/HelperLines.vue'
 import { useScreenshot } from './services/useScreenshot'
 import { generateExportZip } from './services/caExport'
 import { getHelperLines } from './utils/utils'
+import { processModuleData } from './utils/cellmlUtils'
 
 import testModuleBGContent from './assets/bg_modules.cellml?raw'
 import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
@@ -605,86 +606,13 @@ async function onEditConfirm(updatedData) {
   updateNodeData(nodeId, updatedData)
 }
 
-function processModuleData(cellmlString, fileName) {
-  let parser = new libcellml.library.Parser(false)
-  let printer = new libcellml.library.Printer()
-  let model = null
-  try {
-    model = parser.parseModel(cellmlString)
-  } catch (err) {
-    parser.delete()
-    printer.delete()
-
-    return {
-      issues: [
-        {
-          description: 'Failed to parse model.  Reason:' + err.message,
-        },
-      ],
-      type: 'parser',
-    }
-  }
-
-  let errors = []
-  let i = 0
-  if (parser.errorCount()) {
-    while (i < parser.errorCount()) {
-      let e = parser.error(i)
-      errors.push({
-        description: e.description(),
-      })
-      e.delete()
-      i++
-    }
-    parser.delete()
-    printer.delete()
-    model.delete()
-
-    return { issues: errors, type: 'parser' }
-  }
-
-  parser.delete()
-  printer.delete()
-
-  let data = []
-  for (i = 0; i < model.componentCount(); i++) {
-    let comp = model.componentByIndex(i)
-    let options = []
-    for (let j = 0; j < comp.variableCount(); j++) {
-      let varr = comp.variableByIndex(j)
-      if (
-        varr.hasInterfaceType(libcellml.library.Variable.InterfaceType.PUBLIC)
-      ) {
-        let units = varr.units()
-        options.push({
-          name: varr.name(),
-          units: units.name(),
-        })
-        units.delete()
-      }
-      varr.delete()
-    }
-    data.push({
-      name: comp.name(),
-      portOptions: options,
-      ports: [],
-      componentName: comp.name(),
-      sourceFile: fileName,
-    })
-    comp.delete()
-  }
-
-  model.delete()
-  return { type: 'success', data }
-}
-
 const handleModuleFile = (file) => {
   const filename = file.name
   const reader = new FileReader()
   reader.onload = (e) => {
     try {
       try {
-        const result = processModuleData(e.target.result, filename)
+        const result = processModuleData(libcellml, e.target.result, filename)
         if (result.type !== 'success') {
           if (result.issues) {
             ElNotification({
@@ -970,7 +898,7 @@ onMounted(async () => {
   if (import.meta.env.DEV) {
     await libcellmlReadyPromise
     handleParametersFile({ raw: testParamertersCSV })
-    const result = processModuleData(testData.content, testData.filename)
+    const result = processModuleData(libcellml, testData.content, testData.filename)
     if (result.type !== 'success') {
       throw new Error('Failed to process test module file.')
     } else {
