@@ -302,10 +302,6 @@ onConnect((connection) => {
   // })
 })
 
-const movementBuffer = new Map()
-let movementTimeout = null
-const DEBOUNCE_MS = 500
-
 const extractEdgeData = (edge) => {
   return JSON.parse(JSON.stringify(edge))
   // return {
