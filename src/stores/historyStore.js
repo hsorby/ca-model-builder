@@ -44,6 +44,18 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
     }
   }
 
+  function clear() {
+    if (batchTimer) {
+      clearTimeout(batchTimer)
+      batchTimer = null
+    }
+    stack.value = []
+    pointer.value = -1
+    working.value = false
+    lastChangeWasAdd.value = false
+    pendingCommands.value = []
+  }
+
   function addCommand(command) {
     if (working.value) {
       return
@@ -127,6 +139,7 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
     addCommand,
     canRedo,
     canUndo,
+    clear,
     executeAndAddCommand,
     isUndoRedoing,
     lastChangeWasAdd,

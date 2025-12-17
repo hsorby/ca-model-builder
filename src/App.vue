@@ -775,6 +775,7 @@ function handleLoadWorkflow(file) {
       }
 
       // Clear the current Vue Flow state.
+      historyStore.clear()
       nodes.value = []
       edges.value = []
       setViewport({ x: 0, y: 0, zoom: 1 }) // Reset viewport.
