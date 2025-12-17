@@ -307,31 +307,33 @@ let movementTimeout = null
 const DEBOUNCE_MS = 500
 
 const extractEdgeData = (edge) => {
-  return {
-    id: edge.id,
-    markerEnd: edge.markerEnd,
-    source: edge.source,
-    target: edge.target,
-    sourceHandle: edge.sourceHandle,
-    sourceNode: edge.sourceNode,
-    targetHandle: edge.targetHandle,
-    targetNode: edge.targetNode,
-    type: edge.type,
-    data: { ...edge.data },
-    selected: edge.selected,
-  }
+  return JSON.parse(JSON.stringify(edge))
+  // return {
+  //   id: edge.id,
+  //   markerEnd: edge.markerEnd,
+  //   source: edge.source,
+  //   target: edge.target,
+  //   sourceHandle: edge.sourceHandle,
+  //   sourceNode: edge.sourceNode,
+  //   targetHandle: edge.targetHandle,
+  //   targetNode: edge.targetNode,
+  //   type: edge.type,
+  //   data: { ...edge.data },
+  //   selected: edge.selected,
+  // }
 }
 
 const extractNodeData = (node) => {
-  return {
-    id: node.id,
-    type: node.type,
-    position: { ...node.position },
-    data: { ...node.data },
-    dimensions: { ...node.dimensions },
-    selected: node.selected,
-    style: { ...node.style },
-  }
+  return JSON.parse(JSON.stringify(node))
+  // return {
+  //   id: node.id,
+  //   type: node.type,
+  //   position: { ...node.position },
+  //   data: { ...node.data },
+  //   dimensions: { ...node.dimensions },
+  //   selected: node.selected,
+  //   style: { ...node.style },
+  // }
 }
 
 const snapshotEdge = (change) => {
@@ -359,49 +361,6 @@ const snapshotNode = (change) => {
   return extractNodeData(node)
 }
 
-const processSingleChange = (change) => {
-  if (change.type === 'add') {
-    historyStore.lastChangeWasAddSetter(true)
-    const node = snapshotNode(change)
-    historyStore.addCommand({
-      type: 'add',
-      offset: 'not-applied',
-      undo: () => removeNodes(node.id),
-      redo: () => addNodes(node),
-    })
-  } else if (change.type === 'remove') {
-    const snap = snapshotNode(change)
-    if (snap) {
-      historyStore.addCommand({
-        type: 'remove',
-        undo: () => addNodes(snap),
-        redo: () => removeNodes(snap.id),
-      })
-    }
-  } else {
-    if (change.type === 'select') {
-      // Ignore selection changes for history.
-    } else {
-      console.log('Unhandled non-debouncable change type:', change.type)
-      console.log(change)
-    }
-  }
-}
-
-const processOtherChanges = (changes) => {
-  if (changes.length > 1) {
-    historyStore.beginBatch()
-  }
-
-  changes.forEach((change) => {
-    processSingleChange(change)
-  })
-
-  if (changes.length > 1) {
-    historyStore.endBatch()
-  }
-}
-
 const activeInteractionBuffer = new Map()
 
 const onNodeChange = (changes) => {
@@ -410,31 +369,28 @@ const onNodeChange = (changes) => {
     return applyNodeChanges(changes)
   }
 
-  const otherChanges = []
+  // Add node and dimension changes are single node events.
+  // All other changes can be performed on multiple nodes in a change set.
+
+  const addChanges = []
+  const removeChanges = []
+  const moveChanges = []
+  const selectChanges = []
   changes.forEach((c) => {
+    // Deal with the changes that we need to buffer first, which are the posiiton and dimension type changes.
     if (c.type === 'position') {
       if (c.position === undefined && c.from) {
         if (activeInteractionBuffer.has(c.id)) {
           const startSnapshot = activeInteractionBuffer.get(c.id)
           const endSnapshot = snapshotNode({ id: c.id }) // Get current state from store
 
-          // Only commit if position actually changed
+          // Only record move if position actually changed
           if (
             endSnapshot &&
             (startSnapshot.position.x !== endSnapshot.position.x ||
               startSnapshot.position.y !== endSnapshot.position.y)
           ) {
-            historyStore.addCommand({
-              type: 'move',
-              undo: () => {
-                const n = findNode(startSnapshot.id)
-                if (n) n.position = startSnapshot.position
-              },
-              redo: () => {
-                const n = findNode(endSnapshot.id)
-                if (n) n.position = endSnapshot.position
-              },
-            })
+            moveChanges.push({ start: startSnapshot, end: endSnapshot })
           }
           activeInteractionBuffer.delete(c.id)
         }
@@ -506,13 +462,72 @@ const onNodeChange = (changes) => {
         }
       }
     } else {
+      // Non-active interaction buffer changes.
       activeInteractionBuffer.delete(c.id)
-      otherChanges.push(c)
+      if (c.type === 'add') {
+        addChanges.push({ node: snapshotNode(c) })
+      } else if (c.type === 'remove') {
+        removeChanges.push({ node: snapshotNode(c) })
+      } else if (c.type === 'select') {
+        selectChanges.push({ node: snapshotNode(c) })
+      }
     }
   })
 
-  if (otherChanges.length > 0) {
-    processOtherChanges(otherChanges)
+  if (moveChanges.length) {
+    historyStore.addCommand({
+      type: 'move',
+      undo: () => {
+        moveChanges.forEach((m) => {
+          const n = findNode(m.start.id)
+          if (n) n.position = m.start.position
+        })
+      },
+      redo: () => {
+        moveChanges.forEach((m) => {
+          const n = findNode(m.end.id)
+          if (n) n.position = m.end.position
+        })
+      },
+    })
+  }
+  if (addChanges.length) {
+    historyStore.lastChangeWasAddSetter(true)
+    historyStore.addCommand({
+      type: 'add',
+      offset: 'not-applied',
+      undo: () => removeNodes(addChanges[0].node.id),
+      redo: () => addNodes(addChanges[0].node),
+    })
+    if (addChanges.length > 1) {
+      console.warn('Multiple node add changes found!!!')
+    }
+  }
+  if (removeChanges.length) {
+    const nodesToRestore = removeChanges.map((change) => change.node)
+    const idsToRemove = removeChanges.map((change) => change.node.id)
+    historyStore.addCommand({
+      type: 'remove',
+      undo: () => addNodes(nodesToRestore),
+      redo: () => removeNodes(idsToRemove),
+    })
+  }
+  if (selectChanges.length) {
+    historyStore.addCommand({
+      type: 'select',
+      undo: () => {
+        selectChanges.forEach((s) => {
+          const n = findNode(s.node.id)
+          if (n) n.selected = !s.node.selected
+        })
+      },
+      redo: () => {
+        selectChanges.forEach((s) => {
+          const n = findNode(s.node.id)
+          if (n) n.selected = s.node.selected
+        })
+      },
+    })
   }
 
   const updatedChanges = updateHelperLines(changes, nodes.value)
@@ -528,38 +543,57 @@ const onEdgeChange = (changes) => {
     return applyEdgeChanges(changes)
   }
 
-  if (changes.length > 0) {
-    historyStore.beginBatch()
-  }
-
-  const nextChanges = []
+  const removeChanges = []
+  const addChanges = []
+  const selectChanges = []
   changes.forEach((change) => {
     if (change.type === 'remove') {
-      const edgeSnapshot = findEdge(change.id)
-      if (edgeSnapshot) {
-        historyStore.addCommand({
-          redo: () => removeEdges(edgeSnapshot.id),
-          undo: () => addEdges(edgeSnapshot),
-        })
-      }
-      nextChanges.push(change)
+      removeChanges.push({ edge: snapshotEdge(change) })
     } else if (change.type === 'add') {
-      const edgeSnapshot = snapshotEdge(change)
-      historyStore.addCommand({
-        redo: () => addEdges(edgeSnapshot),
-        undo: () => removeEdges(edgeSnapshot.id),
-      })
-    } else {
-      nextChanges.push(change)
+      addChanges.push({ edge: snapshotEdge(change) })
+    } else if (change.type === 'select') {
+      selectChanges.push({ edge: snapshotEdge(change) })
     }
   })
 
-  if (changes.length > 0) {
-    historyStore.endBatch()
+  if (addChanges.length) {
+    historyStore.addCommand({
+      undo: () => removeEdges(addChanges[0].edge.id),
+      redo: () => addEdges(addChanges[0].edge),
+    })
+    if (addChanges.length > 1) {
+      console.warn('Multiple edge add changes found!!!')
+    }
+  }
+  if (removeChanges.length) {
+    const edgesToRestore = removeChanges.map((change) => change.edge)
+    const idsToRemove = removeChanges.map((change) => change.edge.id)
+    historyStore.addCommand({
+      undo: () => addEdges(edgesToRestore),
+      redo: () => removeEdges(idsToRemove),
+    })
+  }
+  if (selectChanges.length) {
+    historyStore.addCommand({
+      type: 'select',
+      undo: () => {
+        selectChanges.forEach((s) => {
+          const e = findEdge(s.edge.id)
+          if (e) e.selected = !s.edge.selected
+        })
+      },
+      redo: () => {
+        selectChanges.forEach((s) => {
+          const e = findEdge(s.edge.id)
+          if (e) e.selected = s.edge.selected
+        })
+      },
+    })
   }
 
-  applyEdgeChanges(nextChanges)
+  applyEdgeChanges(changes)
 }
+
 const screenshotDisabled = computed(
   () => nodes.value.length === 0 && vueFlowRef.value !== null
 )
@@ -871,7 +905,11 @@ onMounted(async () => {
   if (import.meta.env.DEV) {
     await libcellmlReadyPromise
     handleParametersFile({ raw: testParamertersCSV })
-    const result = processModuleData(libcellml, testData.content, testData.filename)
+    const result = processModuleData(
+      libcellml,
+      testData.content,
+      testData.filename
+    )
     if (result.type !== 'success') {
       throw new Error('Failed to process test module file.')
     } else {
