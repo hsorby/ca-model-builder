@@ -256,17 +256,6 @@ function updateHelperLines(changes, nodes) {
   return changes
 }
 
-onConnect((connection) => {
-  // Match what we specify in connectionLineOptions.
-  const newEdge = {
-    ...connection,
-    type: 'smoothstep',
-    markerEnd: MarkerType.ArrowClosed,
-  }
-
-  addEdges(newEdge)
-})
-
 const testData = {
   filename: 'colon_FTU_modules.cellml',
   content: testModuleColonContent,
