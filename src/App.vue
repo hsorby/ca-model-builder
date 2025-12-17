@@ -96,8 +96,6 @@
             @dragleave="onDragLeave"
             @nodes-change="onNodeChange"
             @edges-change="onEdgeChange"
-            @node-drag-start="onNodeDragStart"
-            @node-drag-stop="onNodeDragStop"
             :translate-extent="finiteTranslateExtent"
             :max-zoom="1.5"
             :min-zoom="0.3"
@@ -298,19 +296,6 @@ const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
 const exportAvailable = computed(
   () => nodes.value.length > 0 && builderStore.parameterData.length > 0
 )
-
-let dragStartPos = { x: 0, y: 0 }
-
-const onNodeDragStart = (event) => {
-  // Store the initial position
-  dragStartPos = { ...event.node.position }
-}
-
-const onNodeDragStop = (event) => {
-  const node = event.node
-  const start = { ...dragStartPos }
-  const end = { ...node.position }
-}
 
 onConnect((connection) => {
   // Match what we specify in connectionLineOptions.
