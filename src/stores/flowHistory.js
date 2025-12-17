@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, shallowRef } from 'vue'
 
 export const useFlowHistoryStore = defineStore('flowHistory', () => {
   const stack = ref([])
@@ -8,15 +8,15 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
   const lastChangeWasAdd = ref(false)
   let batchTimer = null
   const eventWaitTime = 25
-  let pendingCommands = []
+  const pendingCommands = shallowRef([])
 
   const canUndo = computed(() => pointer.value >= 0)
   const canRedo = computed(() => pointer.value < stack.value.length - 1)
   const isUndoRedoing = computed(() => working.value)
   const pointerIndex = computed(() => pointer.value)
   const lastCommandHadOffsetApplied = computed(() => {
-    if (pendingCommands.length) {
-      const cmd = pendingCommands[pendingCommands.length - 1]
+    if (pendingCommands.value.length) {
+      const cmd = pendingCommands.value[pendingCommands.value.length - 1]
       return cmd.offset === 'applied'
     }
 
@@ -39,8 +39,8 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
   }
 
   function replaceLastCommand(command) {
-    if (pendingCommands.length) {
-      pendingCommands[pendingCommands.length - 1] = command
+    if (pendingCommands.value.length) {
+      pendingCommands.value[pendingCommands.value.length - 1] = command
     }
   }
 
@@ -51,7 +51,7 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
 
     if (batchTimer) clearTimeout(batchTimer)
 
-    pendingCommands.push(command)
+    pendingCommands.value.push(command)
     // _pushToStack(command)
 
     batchTimer = setTimeout(() => {
@@ -60,23 +60,26 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
   }
 
   function commitBatch() {
-    if (pendingCommands.length === 0) return
-    if (pendingCommands.length === 1) {
-      _pushToStack(pendingCommands[0])
+    if (pendingCommands.value.length === 0) return
+
+    const batch = [...pendingCommands.value]
+
+    if (batch.length === 1) {
+      _pushToStack(batch[0])
     } else {
       const superCommand = {
         type: 'super',
         redo: () => {
-          pendingCommands.forEach((cmd) => cmd.redo())
+          batch.forEach((cmd) => cmd.redo())
         },
         undo: () => {
-          ;[...pendingCommands].reverse().forEach((cmd) => cmd.undo())
+          ;[...batch].reverse().forEach((cmd) => cmd.undo())
         },
       }
       _pushToStack(superCommand)
     }
 
-    pendingCommands = []
+    pendingCommands.value = []
   }
 
   async function executeAndAddCommand(command) {
