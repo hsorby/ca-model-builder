@@ -460,7 +460,8 @@ const onNodeChange = (changes) => {
       } else if (c.type === 'remove') {
         removeChanges.push({ node: snapshotNode(c) })
       } else if (c.type === 'select') {
-        selectChanges.push({ node: snapshotNode(c) })
+        const node = findNode(c.id)
+        selectChanges.push({ id: c.id, from: node.selected, to: c.selected })
       }
     }
   })
@@ -508,14 +509,14 @@ const onNodeChange = (changes) => {
       type: 'select',
       undo: () => {
         selectChanges.forEach((s) => {
-          const n = findNode(s.node.id)
-          if (n) n.selected = !s.node.selected
+          const n = findNode(s.id)
+          if (n) n.selected = s.from
         })
       },
       redo: () => {
         selectChanges.forEach((s) => {
-          const n = findNode(s.node.id)
-          if (n) n.selected = s.node.selected
+          const n = findNode(s.id)
+          if (n) n.selected = s.to
         })
       },
     })
@@ -537,13 +538,14 @@ const onEdgeChange = (changes) => {
   const removeChanges = []
   const addChanges = []
   const selectChanges = []
-  changes.forEach((change) => {
-    if (change.type === 'remove') {
-      removeChanges.push({ edge: snapshotEdge(change) })
-    } else if (change.type === 'add') {
-      addChanges.push({ edge: snapshotEdge(change) })
-    } else if (change.type === 'select') {
-      selectChanges.push({ edge: snapshotEdge(change) })
+  changes.forEach((c) => {
+    if (c.type === 'remove') {
+      removeChanges.push({ edge: snapshotEdge(c) })
+    } else if (c.type === 'add') {
+      addChanges.push({ edge: snapshotEdge(c) })
+    } else if (c.type === 'select') {
+      const edge = findEdge(c.id)
+      selectChanges.push({ id: c.id, from: edge.selected, to: c.selected })
     }
   })
 
@@ -569,14 +571,14 @@ const onEdgeChange = (changes) => {
       type: 'select',
       undo: () => {
         selectChanges.forEach((s) => {
-          const e = findEdge(s.edge.id)
-          if (e) e.selected = !s.edge.selected
+          const e = findEdge(s.id)
+          if (e) e.selected = s.from
         })
       },
       redo: () => {
         selectChanges.forEach((s) => {
-          const e = findEdge(s.edge.id)
-          if (e) e.selected = s.edge.selected
+          const e = findEdge(s.id)
+          if (e) e.selected = s.to
         })
       },
     })
