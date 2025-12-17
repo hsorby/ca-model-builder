@@ -14,7 +14,7 @@ const state = {
   isDragging: ref(false),
 }
 
-export default function useDragAndDrop() {
+export default function useDragAndDrop(pendingHistoryNodes) {
   const { draggedType, isDragOver, isDragging } = state
 
   const {
@@ -120,6 +120,7 @@ export default function useDragAndDrop() {
     const compLabel = moduleData.componentName 
     const filePart = moduleData.sourceFile 
     const label = filePart ? `${compLabel} — ${filePart}` : compLabel
+    pendingHistoryNodes.add(nodeId)
 
     const newNode = {
       id: nodeId,
