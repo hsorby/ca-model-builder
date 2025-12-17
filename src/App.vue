@@ -255,6 +255,7 @@ const connectionLineOptions = ref({
 })
 
 const activeInteractionBuffer = new Map()
+const undoRedoSelection = false
 
 const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
 
@@ -459,7 +460,7 @@ const onNodeChange = (changes) => {
         addChanges.push({ node: snapshotNode(c) })
       } else if (c.type === 'remove') {
         removeChanges.push({ node: snapshotNode(c) })
-      } else if (c.type === 'select') {
+      } else if (c.type === 'select' && undoRedoSelection) {
         const node = findNode(c.id)
         selectChanges.push({ id: c.id, from: node.selected, to: c.selected })
       }
@@ -543,7 +544,7 @@ const onEdgeChange = (changes) => {
       removeChanges.push({ edge: snapshotEdge(c) })
     } else if (c.type === 'add') {
       addChanges.push({ edge: snapshotEdge(c) })
-    } else if (c.type === 'select') {
+    } else if (c.type === 'select' && undoRedoSelection) {
       const edge = findEdge(c.id)
       selectChanges.push({ id: c.id, from: edge.selected, to: c.selected })
     }
