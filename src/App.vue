@@ -181,7 +181,7 @@ import { MiniMap } from '@vue-flow/minimap'
 import Papa from 'papaparse'
 
 import { useBuilderStore } from './stores/builderStore'
-import { useFlowHistoryStore } from './stores/flowHistory'
+import { useFlowHistoryStore } from './stores/historyStore'
 import ModuleList from './components/ModuleList.vue'
 import Workbench from './components/WorkbenchArea.vue'
 import ModuleNode from './components/ModuleNode.vue'
@@ -375,14 +375,11 @@ const processDimensionChange = (c, buffer) => {
         x: node.position.x - node.dimensions.width / 2,
         y: node.position.y - node.dimensions.height / 2,
       }
-      console.log(node.position)
       historyStore.replaceLastCommand({
         type: 'add',
         offset: 'applied',
         undo: () => removeNodes(node.id),
-        redo: () => {
-          console.log(node.position)
-          addNodes(node)},
+        redo: () => addNodes(node),
       })
     }
   } else if (c.dimensions === undefined && buffer.has(c.id)) {

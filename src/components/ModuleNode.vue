@@ -121,9 +121,10 @@ import { computed, nextTick, onMounted, onBeforeUnmount, ref } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
 import { NodeResizer } from '@vue-flow/node-resizer'
 import { Delete, Edit, Key, Place } from '@element-plus/icons-vue'
-import { useFlowHistoryStore } from '../stores/flowHistory'
+import { useFlowHistoryStore } from '../stores/historyStore'
 
-const { addEdges, edges, removeEdges, updateNodeData, updateNodeInternals } = useVueFlow()
+const { addEdges, edges, removeEdges, updateNodeData, updateNodeInternals } =
+  useVueFlow()
 const historyStore = useFlowHistoryStore()
 
 const props = defineProps({
@@ -141,7 +142,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(["open-edit-dialog", "open-replacement-dialog"])
+const emit = defineEmits(['open-edit-dialog', 'open-replacement-dialog'])
 
 const moduleNode = ref(null)
 
@@ -182,12 +183,12 @@ function handleSetDomainType(typeCommand) {
 }
 
 function getHandleStyle(port) {
-  const portsOfSameType = props.data.ports.filter(p => p.type === port.type)
+  const portsOfSameType = props.data.ports.filter((p) => p.type === port.type)
   const n = portsOfSameType.length
 
   // Space between each port.
   const portSpacing = 16
-  const positionIndex = portsOfSameType.findIndex(p => p.uid === port.uid)
+  const positionIndex = portsOfSameType.findIndex((p) => p.uid === port.uid)
 
   // guard: if not found, fall back to 0
   const safeIndex = positionIndex === -1 ? 0 : positionIndex
@@ -218,23 +219,26 @@ const applyPorts = async (portsToSet) => {
 
 async function removePort(portIdToRemove) {
   const oldPorts = JSON.parse(JSON.stringify(props.data.ports))
-  
-  const port = oldPorts.find(p => p.uid === portIdToRemove)
+
+  const port = oldPorts.find((p) => p.uid === portIdToRemove)
   if (!port) return
 
   const handleId = `port_${port.type}_${port.uid}`
 
   // Find all edges connected to this specific port handle.
   // We need to snapshot these edge objects so we can restore them later
-  const connectedEdges = edges.value.filter(edge => 
-    (edge.source === props.id && edge.sourceHandle === handleId) ||
-    (edge.target === props.id && edge.targetHandle === handleId)
+  const connectedEdges = edges.value.filter(
+    (edge) =>
+      (edge.source === props.id && edge.sourceHandle === handleId) ||
+      (edge.target === props.id && edge.targetHandle === handleId)
   )
 
-  const edgesSnapshot = connectedEdges.map(edge => JSON.parse(JSON.stringify(edge)))
+  const edgesSnapshot = connectedEdges.map((edge) =>
+    JSON.parse(JSON.stringify(edge))
+  )
 
   // Define New Ports (for Redo)
-  const newPorts = props.data.ports.filter(p => p.uid !== portIdToRemove)
+  const newPorts = props.data.ports.filter((p) => p.uid !== portIdToRemove)
 
   // Add Composite Command to History
   historyStore.executeAndAddCommand({
@@ -242,7 +246,7 @@ async function removePort(portIdToRemove) {
     undo: async () => {
       // Restore the port first (so the handle exists in the DOM).
       await applyPorts(oldPorts)
-      
+
       // Then, restore the edges.
       if (edgesSnapshot.length > 0) {
         addEdges(edgesSnapshot)
@@ -251,9 +255,9 @@ async function removePort(portIdToRemove) {
     redo: async () => {
       // Remove the edges.
       if (edgesSnapshot.length > 0) {
-        removeEdges(edgesSnapshot.map(e => e.id))
+        removeEdges(edgesSnapshot.map((e) => e.id))
       }
-      
+
       // Then, remove the port
       await applyPorts(newPorts)
     },
@@ -265,7 +269,7 @@ const addPort = async (portToAdd) => {
   // create stable node id
   const newPort = {
     ...portToAdd,
-    uid: crypto.randomUUID()
+    uid: crypto.randomUUID(),
   }
 
   // Create a new array with the old ports + the new one
@@ -331,18 +335,18 @@ const moduleListClickEl = ref(null)
 
 function onDocumentPointerDown(event) {
   // If the pointer down is inside the context menu, do nothing
-  const path = event.composedPath ? event.composedPath() : (event.path || [])
-  const cm = document.querySelector(".context-menu")
+  const path = event.composedPath ? event.composedPath() : event.path || []
+  const cm = document.querySelector('.context-menu')
   if (cm && path.includes(cm)) return
   closeContextMenu()
 }
 
 function removeMenuOpenListeners() {
-  document.removeEventListener("click", closeContextMenu)
-  document.removeEventListener("pointerdown", onDocumentPointerDown, true)
-  document.removeEventListener("dragstart", closeContextMenu)
- if (moduleListClickEl.value) {
-    moduleListClickEl.value.removeEventListener("click", closeContextMenu)
+  document.removeEventListener('click', closeContextMenu)
+  document.removeEventListener('pointerdown', onDocumentPointerDown, true)
+  document.removeEventListener('dragstart', closeContextMenu)
+  if (moduleListClickEl.value) {
+    moduleListClickEl.value.removeEventListener('click', closeContextMenu)
     moduleListClickEl.value = null
   }
 }
@@ -353,13 +357,13 @@ function closeContextMenu() {
 }
 
 onMounted(() => {
-  document.addEventListener("module-context-open", handleExternalContextOpen)
-  document.addEventListener("contextmenu", handleDocumentContextmenu)
+  document.addEventListener('module-context-open', handleExternalContextOpen)
+  document.addEventListener('contextmenu', handleDocumentContextmenu)
 })
 
 onBeforeUnmount(() => {
-  document.removeEventListener("module-context-open", handleExternalContextOpen)
-  document.removeEventListener("contextmenu", handleDocumentContextmenu)
+  document.removeEventListener('module-context-open', handleExternalContextOpen)
+  document.removeEventListener('contextmenu', handleDocumentContextmenu)
   removeMenuOpenListeners()
 })
 
@@ -385,13 +389,13 @@ async function openContextMenu(event) {
   await nextTick()
 
   // close when clicking elsewhere and pointer down/drag start
-  document.addEventListener("click", closeContextMenu)
-  document.addEventListener("dragstart", closeContextMenu)
-  document.addEventListener("pointerdown", onDocumentPointerDown, true)
+  document.addEventListener('click', closeContextMenu)
+  document.addEventListener('dragstart', closeContextMenu)
+  document.addEventListener('pointerdown', onDocumentPointerDown, true)
 }
 
 async function openReplacementDialog() {
-  emit("open-replacement-dialog", {
+  emit('open-replacement-dialog', {
     nodeId: props.id,
     nodeData: props.data,
     name: props.data.name,
@@ -412,7 +416,7 @@ function handleExternalContextOpen(e) {
 function handleDocumentContextmenu(e) {
   // If the right-click target is not inside this module node, close the menu.
   if (!moduleNode.value) return
-  const path = e.composedPath ? e.composedPath() : (e.path || [])
+  const path = e.composedPath ? e.composedPath() : e.path || []
   if (!path.includes(moduleNode.value)) {
     closeContextMenu()
   }
