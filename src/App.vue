@@ -302,32 +302,10 @@ function updateHelperLines(changes, nodes) {
 
 const extractEdgeData = (edge) => {
   return JSON.parse(JSON.stringify(edge))
-  // return {
-  //   id: edge.id,
-  //   markerEnd: edge.markerEnd,
-  //   source: edge.source,
-  //   target: edge.target,
-  //   sourceHandle: edge.sourceHandle,
-  //   sourceNode: edge.sourceNode,
-  //   targetHandle: edge.targetHandle,
-  //   targetNode: edge.targetNode,
-  //   type: edge.type,
-  //   data: { ...edge.data },
-  //   selected: edge.selected,
-  // }
 }
 
 const extractNodeData = (node) => {
   return JSON.parse(JSON.stringify(node))
-  // return {
-  //   id: node.id,
-  //   type: node.type,
-  //   position: { ...node.position },
-  //   data: { ...node.data },
-  //   dimensions: { ...node.dimensions },
-  //   selected: node.selected,
-  //   style: { ...node.style },
-  // }
 }
 
 const snapshotEdge = (change) => {
