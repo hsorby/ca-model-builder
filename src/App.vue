@@ -295,11 +295,6 @@ onConnect((connection) => {
   }
 
   addEdges(newEdge)
-
-  // historyStore.addCommand({
-  //   redo: () => addEdges(connection),
-  //   undo: () => removeEdges(connection.id), // Vue Flow auto-generates IDs if not provided, ensure you handle IDs
-  // })
 })
 
 const extractEdgeData = (edge) => {
