@@ -300,37 +300,33 @@ function updateHelperLines(changes, nodes) {
   return changes
 }
 
-const extractEdgeData = (edge) => {
-  return JSON.parse(JSON.stringify(edge))
-}
-
-const extractNodeData = (node) => {
-  return JSON.parse(JSON.stringify(node))
+const detachReactivity = (item) => {
+  return JSON.parse(JSON.stringify(item))
 }
 
 const snapshotEdge = (change) => {
   if (change.type === 'add') {
-    return extractEdgeData(change.item)
+    return detachReactivity(change.item)
   }
 
   const edge = findEdge(change.id)
   if (!edge) return null
 
   // Create a deep copy to break reactivity references
-  return extractEdgeData(edge)
+  return detachReactivity(edge)
 }
 
 const snapshotNode = (change) => {
   if (change.type === 'add') {
     // For added nodes, snapshot is the node itself
-    return extractNodeData(change.item)
+    return detachReactivity(change.item)
   }
 
   const node = findNode(change.id)
   if (!node) return null
 
   // Create a deep copy to break reactivity references
-  return extractNodeData(node)
+  return detachReactivity(node)
 }
 
 const onNodeChange = (changes) => {
