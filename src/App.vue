@@ -254,6 +254,8 @@ const connectionLineOptions = ref({
   },
 })
 
+const activeInteractionBuffer = new Map()
+
 const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
 
 const exportAvailable = computed(
@@ -351,8 +353,6 @@ const snapshotNode = (change) => {
   // Create a deep copy to break reactivity references
   return extractNodeData(node)
 }
-
-const activeInteractionBuffer = new Map()
 
 const onNodeChange = (changes) => {
   if (historyStore.isUndoRedoing) {
