@@ -103,7 +103,6 @@
             :min-zoom="0.3"
             :connection-line-options="connectionLineOptions"
             :nodes="nodes"
-            fit-view-on-init
             :delete-key-code="['Backspace', 'Delete']"
           >
             <HelperLines
