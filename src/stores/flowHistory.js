@@ -6,21 +6,25 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
   const pointer = ref(-1)
   const working = ref(false)
   const lastChangeWasAdd = ref(false)
+  let batchTimer = null
+  const eventWaitTime = 25
+  let pendingCommands = []
 
   const canUndo = computed(() => pointer.value >= 0)
   const canRedo = computed(() => pointer.value < stack.value.length - 1)
   const isUndoRedoing = computed(() => working.value)
   const pointerIndex = computed(() => pointer.value)
   const lastCommandHadOffsetApplied = computed(() => {
-    if (pointer.value < 0) {
-      return false
+    if (pendingCommands.length) {
+      const cmd = pendingCommands[pendingCommands.length - 1]
+      return cmd.offset === 'applied'
     }
-    const cmd = stack.value[pointer.value]
-    return cmd.offset === 'applied'
+
+    return false
   })
 
   /**
-   * Internal helper to handle stack slicing and pointer
+   * Internal helper to handle stack slicing and pointer.
    */
   function _pushToStack(command) {
     if (pointer.value < stack.value.length - 1) {
@@ -35,22 +39,44 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
   }
 
   function replaceLastCommand(command) {
-    if (pointer.value < 0) {
-      return
+    if (pendingCommands.length) {
+      pendingCommands[pendingCommands.length - 1] = command
     }
-
-    stack.value[pointer.value] = command
   }
 
-  /**
-   * Modified addCommand
-   */
   function addCommand(command) {
     if (working.value) {
       return
     }
 
-    _pushToStack(command)
+    if (batchTimer) clearTimeout(batchTimer)
+
+    pendingCommands.push(command)
+    // _pushToStack(command)
+
+    batchTimer = setTimeout(() => {
+      commitBatch()
+    }, eventWaitTime)
+  }
+
+  function commitBatch() {
+    if (pendingCommands.length === 0) return
+    if (pendingCommands.length === 1) {
+      _pushToStack(pendingCommands[0])
+    } else {
+      const superCommand = {
+        type: 'super',
+        redo: () => {
+          pendingCommands.forEach((cmd) => cmd.redo())
+        },
+        undo: () => {
+          ;[...pendingCommands].reverse().forEach((cmd) => cmd.undo())
+        },
+      }
+      _pushToStack(superCommand)
+    }
+
+    pendingCommands = []
   }
 
   async function executeAndAddCommand(command) {

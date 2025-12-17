@@ -274,6 +274,24 @@ onConnect((connection) => {
   addEdges(newEdge)
 })
 
+const createSelectCommand = (changes, findFn) => {
+  return {
+    type: 'select',
+    undo: () => {
+      changes.forEach((s) => {
+        const item = findFn(s.id)
+        if (item) item.selected = s.from
+      })
+    },
+    redo: () => {
+      changes.forEach((s) => {
+        const item = findFn(s.id)
+        if (item) item.selected = s.to
+      })
+    },
+  }
+}
+
 function updateHelperLines(changes, nodes) {
   helperLineHorizontal.value = undefined
   helperLineVertical.value = undefined
@@ -296,8 +314,6 @@ function updateHelperLines(changes, nodes) {
     helperLineVertical.value = helperLines.vertical
     alignment.value = helperLines.alignment
   }
-
-  return changes
 }
 
 const detachReactivity = (item) => {
@@ -329,6 +345,87 @@ const snapshotNode = (change) => {
   return detachReactivity(node)
 }
 
+const processPositionChange = (c, buffer, moveChanges) => {
+  if (c.position === undefined && c.from && buffer.has(c.id)) {
+    // Drag End
+    const start = buffer.get(c.id)
+    const end = snapshotNode({ id: c.id })
+
+    if (
+      end &&
+      (start.position.x !== end.position.x ||
+        start.position.y !== end.position.y)
+    ) {
+      moveChanges.push({ start, end })
+    }
+    buffer.delete(c.id)
+  } else if (c.position && !buffer.has(c.id)) {
+    // Drag Start
+    const snap = snapshotNode({ id: c.id })
+    if (snap) buffer.set(c.id, snap)
+  }
+}
+
+const processDimensionChange = (c, buffer) => {
+  if (historyStore.lastChangeWasAdd) {
+    historyStore.lastChangeWasAddSetter(false)
+    if (!historyStore.lastCommandHadOffsetApplied) {
+      const node = snapshotNode(c)
+      node.position = {
+        x: node.position.x - node.dimensions.width / 2,
+        y: node.position.y - node.dimensions.height / 2,
+      }
+      console.log(node.position)
+      historyStore.replaceLastCommand({
+        type: 'add',
+        offset: 'applied',
+        undo: () => removeNodes(node.id),
+        redo: () => {
+          console.log(node.position)
+          addNodes(node)},
+      })
+    }
+  } else if (c.dimensions === undefined && buffer.has(c.id)) {
+    const startSnapshot = buffer.get(c.id)
+    const endSnapshot = snapshotNode({ id: c.id })
+
+    // Only add command if dimensions actually changed
+    if (
+      endSnapshot &&
+      (startSnapshot.dimensions.width !== endSnapshot.dimensions.width ||
+        startSnapshot.dimensions.height !== endSnapshot.dimensions.height)
+    ) {
+      historyStore.addCommand({
+        type: 'resize',
+        undo: () => {
+          const n = findNode(startSnapshot.id)
+          if (n) {
+            n.dimensions = startSnapshot.dimensions
+            n.position = startSnapshot.position
+            n.style = { ...startSnapshot.style }
+          }
+        },
+        redo: () => {
+          const n = findNode(endSnapshot.id)
+          if (n) {
+            n.dimensions = endSnapshot.dimensions
+            n.position = endSnapshot.position
+            n.style = { ...endSnapshot.style }
+          }
+        },
+      })
+    }
+    buffer.delete(c.id)
+  } else if (c.dimensions) {
+    if (!buffer.has(c.id)) {
+      const snap = snapshotNode({ id: c.id })
+      if (snap) {
+        buffer.set(c.id, snap)
+      }
+    }
+  }
+}
+
 const onNodeChange = (changes) => {
   if (historyStore.isUndoRedoing) {
     // If we are currently undoing/redoing, bypass history tracking
@@ -345,88 +442,9 @@ const onNodeChange = (changes) => {
   changes.forEach((c) => {
     // Deal with the changes that we need to buffer first, which are the posiiton and dimension type changes.
     if (c.type === 'position') {
-      if (c.position === undefined && c.from) {
-        if (activeInteractionBuffer.has(c.id)) {
-          const startSnapshot = activeInteractionBuffer.get(c.id)
-          const endSnapshot = snapshotNode({ id: c.id }) // Get current state from store
-
-          // Only record move if position actually changed
-          if (
-            endSnapshot &&
-            (startSnapshot.position.x !== endSnapshot.position.x ||
-              startSnapshot.position.y !== endSnapshot.position.y)
-          ) {
-            moveChanges.push({ start: startSnapshot, end: endSnapshot })
-          }
-          activeInteractionBuffer.delete(c.id)
-        }
-      } else if (c.position) {
-        // Capture the "Start" state if we haven't yet for this specific drag session.
-        if (!activeInteractionBuffer.has(c.id)) {
-          const snap = snapshotNode({ id: c.id })
-          if (snap) {
-            activeInteractionBuffer.set(c.id, snap)
-          }
-        }
-      }
+      processPositionChange(c, activeInteractionBuffer, moveChanges)
     } else if (c.type === 'dimensions') {
-      if (historyStore.lastChangeWasAdd) {
-        historyStore.lastChangeWasAddSetter(false)
-        if (!historyStore.lastCommandHadOffsetApplied) {
-          const node = snapshotNode(c)
-          node.position = {
-            x: node.position.x - node.dimensions.width / 2,
-            y: node.position.y - node.dimensions.height / 2,
-          }
-          historyStore.replaceLastCommand({
-            type: 'add',
-            offset: 'applied',
-            undo: () => removeNodes(node.id),
-            redo: () => addNodes(node),
-          })
-        }
-      } else if (
-        c.dimensions === undefined &&
-        activeInteractionBuffer.has(c.id)
-      ) {
-        const startSnapshot = activeInteractionBuffer.get(c.id)
-        const endSnapshot = snapshotNode({ id: c.id })
-
-        // Only add command if dimensions actually changed
-        if (
-          endSnapshot &&
-          (startSnapshot.dimensions.width !== endSnapshot.dimensions.width ||
-            startSnapshot.dimensions.height !== endSnapshot.dimensions.height)
-        ) {
-          historyStore.addCommand({
-            type: 'resize',
-            undo: () => {
-              const n = findNode(startSnapshot.id)
-              if (n) {
-                n.dimensions = startSnapshot.dimensions
-                n.position = startSnapshot.position
-                n.style = { ...startSnapshot.style }
-              }
-            },
-            redo: () => {
-              const n = findNode(endSnapshot.id)
-              if (n) {
-                n.dimensions = endSnapshot.dimensions
-                n.position = endSnapshot.position
-                n.style = { ...endSnapshot.style }
-              }
-            },
-          })
-        }
-        activeInteractionBuffer.delete(c.id)
-      } else if (c.dimensions) {
-        if (!activeInteractionBuffer.has(c.id)) {
-          const snap = snapshotNode({ id: c.id })
-          if (snap) {
-            activeInteractionBuffer.set(c.id, snap)
-          }
-        }
-      }
+      processDimensionChange(c, activeInteractionBuffer)
     } else {
       // Non-active interaction buffer changes.
       activeInteractionBuffer.delete(c.id)
@@ -436,7 +454,9 @@ const onNodeChange = (changes) => {
         removeChanges.push({ node: snapshotNode(c) })
       } else if (c.type === 'select' && undoRedoSelection) {
         const node = findNode(c.id)
-        selectChanges.push({ id: c.id, from: node.selected, to: c.selected })
+        if (node) {
+          selectChanges.push({ id: c.id, from: node.selected, to: c.selected })
+        }
       }
     }
   })
@@ -459,16 +479,16 @@ const onNodeChange = (changes) => {
     })
   }
   if (addChanges.length) {
+    const nodesToAdd = addChanges.map((c) => c.node)
+    const idsToRemove = addChanges.map((c) => c.node.id)
+
     historyStore.lastChangeWasAddSetter(true)
     historyStore.addCommand({
       type: 'add',
       offset: 'not-applied',
-      undo: () => removeNodes(addChanges[0].node.id),
-      redo: () => addNodes(addChanges[0].node),
+      undo: () => removeNodes(idsToRemove),
+      redo: () => addNodes(nodesToAdd),
     })
-    if (addChanges.length > 1) {
-      console.warn('Multiple node add changes found!!!')
-    }
   }
   if (removeChanges.length) {
     const nodesToRestore = removeChanges.map((change) => change.node)
@@ -480,28 +500,13 @@ const onNodeChange = (changes) => {
     })
   }
   if (selectChanges.length) {
-    historyStore.addCommand({
-      type: 'select',
-      undo: () => {
-        selectChanges.forEach((s) => {
-          const n = findNode(s.id)
-          if (n) n.selected = s.from
-        })
-      },
-      redo: () => {
-        selectChanges.forEach((s) => {
-          const n = findNode(s.id)
-          if (n) n.selected = s.to
-        })
-      },
-    })
+    historyStore.addCommand(createSelectCommand(selectChanges, findNode))
   }
 
-  const updatedChanges = updateHelperLines(changes, nodes.value)
+  updateHelperLines(changes, nodes.value)
 
   // Have Vue Flow update the graph
   applyNodeChanges(changes)
-  applyNodeChanges(updatedChanges)
 }
 
 const onEdgeChange = (changes) => {
@@ -525,13 +530,12 @@ const onEdgeChange = (changes) => {
   })
 
   if (addChanges.length) {
+    const edgesToRestore = addChanges.map((change) => change.edge)
+    const idsToRemove = addChanges.map((change) => change.edge.id)
     historyStore.addCommand({
-      undo: () => removeEdges(addChanges[0].edge.id),
-      redo: () => addEdges(addChanges[0].edge),
+      undo: () => removeEdges(idsToRemove),
+      redo: () => addEdges(edgesToRestore),
     })
-    if (addChanges.length > 1) {
-      console.warn('Multiple edge add changes found!!!')
-    }
   }
   if (removeChanges.length) {
     const edgesToRestore = removeChanges.map((change) => change.edge)
@@ -542,21 +546,7 @@ const onEdgeChange = (changes) => {
     })
   }
   if (selectChanges.length) {
-    historyStore.addCommand({
-      type: 'select',
-      undo: () => {
-        selectChanges.forEach((s) => {
-          const e = findEdge(s.id)
-          if (e) e.selected = s.from
-        })
-      },
-      redo: () => {
-        selectChanges.forEach((s) => {
-          const e = findEdge(s.id)
-          if (e) e.selected = s.to
-        })
-      },
-    })
+    historyStore.addCommand(createSelectCommand(selectChanges, findEdge))
   }
 
   applyEdgeChanges(changes)
