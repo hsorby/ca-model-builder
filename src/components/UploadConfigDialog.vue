@@ -54,7 +54,6 @@
             </el-input>
             <el-button type="success">Browse</el-button>
           </el-upload>
-
           <el-icon v-if="moduleConfigValid" color="green">
             <Check />
           </el-icon>
@@ -78,7 +77,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { ElNotification } from 'element-plus'
 import { Check } from '@element-plus/icons-vue'
 import Papa from 'papaparse'
@@ -129,9 +128,13 @@ const handleVesselArray = (file) => {
   vesselArrayValid.value = true
 
   Papa.parse(file.raw, {
-    header: true, // Converts row 1 to object keys
+    header: true, // Converts row 1 to object keys.
     skipEmptyLines: true,
-
+    trimHeaders: true, // Remove whitespace from headers.
+    transform: (value) => {
+      // Removes whitespace from cell values.
+      return value.trim()
+    },
     complete: (results) => {
       try {
         // Error handle - confirm that the file loaded has the required columns (i.e., is a valid vessel array file)
