@@ -67,15 +67,13 @@
 
           <el-divider direction="vertical" style="margin: 0 15px" />
 
-          <el-button 
+          <el-button
             type="info"
             @click="onOpenConfigUploadDialog"
             :disabled="libcellml.status !== 'ready'"
-            >
-            Load Config Files
+          >
+            Import Config Files
           </el-button>
-
-          <el-divider direction="vertical" style="margin: 0 15px" />
 
           <el-button
             type="info"
