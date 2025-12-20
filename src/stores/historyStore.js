@@ -2,13 +2,19 @@ import { defineStore } from 'pinia'
 import { ref, computed, shallowRef } from 'vue'
 
 export const useFlowHistoryStore = defineStore('flowHistory', () => {
+  // Command stack and pointer.
   const stack = ref([])
   const pointer = ref(-1)
   const working = ref(false)
   const lastChangeWasAdd = ref(false)
+
+  // Batching related controls.
   let batchTimer = null
   const eventWaitTime = 25
   const pendingCommands = shallowRef([])
+
+  // Manual batching flag.
+  const isManualBatching = ref(false)
 
   const canUndo = computed(() => pointer.value >= 0)
   const canRedo = computed(() => pointer.value < stack.value.length - 1)
@@ -54,6 +60,7 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
     working.value = false
     lastChangeWasAdd.value = false
     pendingCommands.value = []
+    isManualBatching.value = false
   }
 
   function addCommand(command) {
@@ -61,20 +68,50 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
       return
     }
 
-    if (batchTimer) clearTimeout(batchTimer)
-
     pendingCommands.value.push(command)
-    // _pushToStack(command)
+
+    if (isManualBatching.value) {
+      return
+    }
+
+    if (batchTimer) clearTimeout(batchTimer)
 
     batchTimer = setTimeout(() => {
       commitBatch()
     }, eventWaitTime)
+  }
+  /**
+   * Start a manual transaction.
+   * Disables the auto-timer and holds all subsequent commands in pendingCommands.
+   */
+  function startBatch() {
+    if (batchTimer) {
+      clearTimeout(batchTimer)
+      batchTimer = null
+    }
+    isManualBatching.value = true
+  }
+
+  /**
+   * End a manual transaction.
+   * Forces a commit of all pending commands into a single history step.
+   */
+  function endBatch() {
+    isManualBatching.value = false
+    commitBatch()
   }
 
   function commitBatch() {
     if (pendingCommands.value.length === 0) return
 
     const batch = [...pendingCommands.value]
+
+    // Clear pending commands.
+    pendingCommands.value = []
+    if (batchTimer) {
+      clearTimeout(batchTimer)
+      batchTimer = null
+    }
 
     if (batch.length === 1) {
       _pushToStack(batch[0])
@@ -90,8 +127,6 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
       }
       _pushToStack(superCommand)
     }
-
-    pendingCommands.value = []
   }
 
   async function executeAndAddCommand(command) {
@@ -99,7 +134,12 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
 
     try {
       await command.redo()
-      _pushToStack(command)
+      // If manual batching is active, capture this explicit execution too
+      if (isManualBatching.value) {
+        pendingCommands.value.push(command)
+      } else {
+        _pushToStack(command)
+      }
     } finally {
       working.value = false
     }
@@ -140,6 +180,7 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
     canRedo,
     canUndo,
     clear,
+    endBatch,
     executeAndAddCommand,
     isUndoRedoing,
     lastChangeWasAdd,
@@ -148,6 +189,7 @@ export const useFlowHistoryStore = defineStore('flowHistory', () => {
     pointerIndex,
     redo,
     replaceLastCommand,
+    startBatch,
     undo,
   }
 })

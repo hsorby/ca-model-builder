@@ -23,13 +23,14 @@ function runPortGranularLayout(nodes, edges) {
   })
 
   // 2. Create "Port" Nodes
-  const getDagrePortId = (nodeId, handleId) => `DAGRE_PORT_${nodeId}_${handleId}`
+  const getDagrePortId = (nodeId, handleId) =>
+    `DAGRE_PORT_${nodeId}_${handleId}`
 
   nodes.forEach((node) => {
     const ports = node.data.ports || []
     ports.forEach((port) => {
       // Ensure we use the exact same ID generation logic as the edge handles
-      const handleId = getHandleId(port) 
+      const handleId = getHandleId(port)
       const portNodeId = getDagrePortId(node.id, handleId)
 
       g.setNode(portNodeId, { width: 10, height: 10 })
@@ -73,11 +74,16 @@ function runPortGranularLayout(nodes, edges) {
   })
 }
 
-// ----------------------------------------------------------------------
-// MAIN COMPOSABLE
-// ----------------------------------------------------------------------
 export function useLoadFromConfigFiles() {
-  const { nodes, edges, addNodes, addEdges, setViewport, onNodesInitialized, fitView } = useVueFlow()
+  const {
+    nodes,
+    edges,
+    addNodes,
+    addEdges,
+    setViewport,
+    onNodesInitialized,
+    fitView,
+  } = useVueFlow()
   const store = useBuilderStore()
   const historyStore = useFlowHistoryStore()
 
@@ -86,12 +92,16 @@ export function useLoadFromConfigFiles() {
   let pendingNodeDataMap = new Map()
 
   async function loadFromConfigFiles(configFiles) {
-    await nextTick()
+    // await nextTick()
     try {
-      const { valid, missing } = validateWorkflowModules(configFiles.moduleConfig, store.availableModules)
+      const { valid, missing } = validateWorkflowModules(
+        configFiles.moduleConfig,
+        store.availableModules
+      )
       if (!valid) throw new Error(`Missing modules: ${missing.join(', ')}`)
 
       historyStore.clear()
+      // historyStore.startBatch()
       nodes.value = []
       edges.value = []
       setViewport({ x: 0, y: 0, zoom: 1 })
@@ -107,6 +117,7 @@ export function useLoadFromConfigFiles() {
     } catch (error) {
       ElNotification.error(`Failed to load workflow: ${error.message}`)
       layoutPending.value = false
+      // historyStore.endBatch()
     }
   }
 
@@ -116,15 +127,16 @@ export function useLoadFromConfigFiles() {
     try {
       // Run Layout (Calculates positions & sorts port arrays)
       runPortGranularLayout(initializedNodes, pendingEdges)
-      
+
       // Add the Finalized Edges
       addEdges(pendingEdges)
 
+      historyStore.clear()
       nextTick(() => {
         fitView({ padding: 0.2, duration: 800 })
       })
     } catch (err) {
-      console.error('Layout failed', err)
+      historyStore.clear()
       ElNotification.error('Error organizing graph layout')
     } finally {
       layoutPending.value = false

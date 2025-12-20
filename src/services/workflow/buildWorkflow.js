@@ -48,9 +48,12 @@ function buildNodes(availableModules, vessels, moduleConfig) {
   })
 }
 
-function buildEdges(vessels, nodes) { 
+function buildEdges(vessels, nodes, rankdir = 'LR') { 
   const edges = []
   const nodeMap = new Map(nodes.map(n => [n.id, n]))
+
+  const SOURCE_PORT_TYPE = rankdir === 'LR' ? 'right' : 'bottom'
+  const TARGET_PORT_TYPE = rankdir === 'LR' ? 'left' : 'top'
 
   // We need to track how many INPUT connections a target has received
   // so we don't pile them all onto its first input port.
@@ -63,7 +66,7 @@ function buildEdges(vessels, nodes) {
     if (!sourceNode) return
 
     // Get ALL valid source ports
-    const sourcePorts = sourceNode.data.ports.filter(p => p.type === 'right')
+    const sourcePorts = sourceNode.data.ports.filter(p => p.type === SOURCE_PORT_TYPE)
     if (sourcePorts.length === 0) return 
 
     const targets = vessel.out_vessels.split(' ')
@@ -80,7 +83,7 @@ function buildEdges(vessels, nodes) {
 
       // --- TARGET SIDE FIX ---
       // Get all valid target ports
-      const targetPorts = targetNode.data.ports.filter(p => p.type === 'left')
+      const targetPorts = targetNode.data.ports.filter(p => p.type === TARGET_PORT_TYPE)
       if (targetPorts.length === 0) return
 
       // Determine which input slot on the target we should use
