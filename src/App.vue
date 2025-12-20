@@ -107,7 +107,8 @@
             :translate-extent="finiteTranslateExtent"
             :max-zoom="1.5"
             :min-zoom="0.3"
-            :connection-line-options="connectionLineOptions"
+            :default-edge-options="edgeLineOptions"
+            :connection-line-options="edgeLineOptions"
             :nodes="nodes"
             :delete-key-code="['Backspace', 'Delete']"
           >
@@ -263,7 +264,7 @@ const exportDialogVisible = ref(false)
 const replacementDialogVisible = ref(false)
 const currentEditingNode = ref({ nodeId: '', ports: [], name: '' })
 const asideWidth = ref(250)
-const connectionLineOptions = ref({
+const edgeLineOptions = ref({
   type: 'smoothstep',
   markerEnd: MarkerType.ArrowClosed,
   style: {
@@ -285,8 +286,7 @@ onConnect((connection) => {
   // Match what we specify in connectionLineOptions.
   const newEdge = {
     ...connection,
-    type: 'smoothstep',
-    markerEnd: MarkerType.ArrowClosed,
+    ...edgeLineOptions.value,
   }
 
   addEdges(newEdge)
@@ -595,6 +595,7 @@ async function onEditConfirm(updatedData) {
 }
 
 const handleModuleFile = (file) => {
+  console.log(file)
   const filename = file.name
   const reader = new FileReader()
   reader.onload = (e) => {
@@ -615,6 +616,11 @@ const handleModuleFile = (file) => {
         builderStore.addModuleFile({
           filename: filename,
           modules: result.data,
+        })
+        ElNotification.success({
+          title: 'Modules Loaded',
+          message: `Loaded ${result.data.length} parameters from ${file.name}.`,
+          offset: 50,
         })
       } catch (err) {
         console.error('Error parsing file:', err)
@@ -893,7 +899,7 @@ onMounted(async () => {
       testData.filename
     )
     if (result.type !== 'success') {
-      throw new Error('Failed to process test module file.')
+      throw new Error('Failed to process test parameters file.')
     } else {
       builderStore.addModuleFile({
         filename: testData.filename,
