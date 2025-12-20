@@ -4,7 +4,7 @@
 import { buildPorts, buildPortLabels } from './buildPorts'
 import { getHandleId } from '../../utils/ports'
 
-export function buildWorkflowNodes(availableModules, vessels, moduleConfig) {
+function buildNodes(availableModules, vessels, moduleConfig) {
   const moduleLookup = new Map()
   availableModules.forEach((file) => {
     file.modules.forEach((mod) => {
@@ -48,38 +48,70 @@ export function buildWorkflowNodes(availableModules, vessels, moduleConfig) {
   })
 }
 
-export function buildLogicalEdges(vessels) {
-  const logicalEdges = []
+function buildEdges(vessels, nodes) { 
+  const edges = []
+  const nodeMap = new Map(nodes.map(n => [n.id, n]))
+
+  // We need to track how many INPUT connections a target has received
+  // so we don't pile them all onto its first input port.
+  const targetUsageCount = new Map() // Key: NodeID, Value: Integer (count)
 
   vessels.forEach((vessel) => {
     if (!vessel.out_vessels) return
 
-    vessel.out_vessels.split(' ').forEach((targetName) => {
-      logicalEdges.push({
+    const sourceNode = nodeMap.get(vessel.name)
+    if (!sourceNode) return
+
+    // Get ALL valid source ports
+    const sourcePorts = sourceNode.data.ports.filter(p => p.type === 'right')
+    if (sourcePorts.length === 0) return 
+
+    const targets = vessel.out_vessels.split(' ')
+
+    targets.forEach((targetName, index) => {
+      const targetNode = nodeMap.get(targetName)
+      if (!targetNode) return
+
+      // --- SOURCE SIDE FIX ---
+      // Use the index to pick a unique port. 
+      // If we have more edges than ports, wrap around or reuse the last one.
+      const sourcePortIndex = Math.min(index, sourcePorts.length - 1)
+      const sourcePort = sourcePorts[sourcePortIndex]
+
+      // --- TARGET SIDE FIX ---
+      // Get all valid target ports
+      const targetPorts = targetNode.data.ports.filter(p => p.type === 'left')
+      if (targetPorts.length === 0) return
+
+      // Determine which input slot on the target we should use
+      const currentCount = targetUsageCount.get(targetName) || 0
+      const targetPortIndex = Math.min(currentCount, targetPorts.length - 1)
+      const targetPort = targetPorts[targetPortIndex]
+
+      // Increment usage for next time someone connects to this target
+      targetUsageCount.set(targetName, currentCount + 1)
+
+      edges.push({
+        id: `e_${vessel.name}_${targetName}_${crypto.randomUUID()}`,
         source: vessel.name,
         target: targetName,
-        // We don't assign handles yet!
-        // We just note what TYPE of connection we need (if relevant)
-        type: 'vessel_connection',
+        sourceHandle: getHandleId(sourcePort),
+        targetHandle: getHandleId(targetPort),
       })
     })
   })
 
-  return logicalEdges
+  return edges
 }
 
 export function buildWorkflowGraph(store, configFiles) {
-  const nodes = buildWorkflowNodes(
+  const nodes = buildNodes(
     store,
     configFiles.vesselArray,
     configFiles.moduleConfig
   )
 
-  const nodeByName = new Map(nodes.map((node) => [node.data.name, node]))
+  const edges = buildEdges(configFiles.vesselArray, nodes)
 
-  // const portAllocator = createPortAllocator()
-
-  const logicalEdges = buildLogicalEdges(configFiles.vesselArray)
-
-  return { nodes, logicalEdges }
+  return { nodes, edges }
 }
