@@ -28,10 +28,29 @@
 
           <el-divider direction="vertical" style="margin: 0 15px" />
 
+          <el-button
+            type="info"
+            @click="handleUndo"
+            style="margin-left: 10px"
+            :disabled="!historyStore.canUndo"
+          >
+            Undo
+          </el-button>
+          <el-button
+            type="info"
+            @click="handleRedo"
+            style="margin-left: 10px"
+            :disabled="!historyStore.canRedo"
+          >
+            Redo
+          </el-button>
+
+          <el-divider direction="vertical" style="margin: 0 15px" />
+
           <el-upload
             action="#"
             :auto-upload="false"
-            :on-change="handleLoadWorkflow"
+            :on-change="handleLoadWorkspace"
             :show-file-list="false"
             accept=".json"
           >
@@ -40,7 +59,7 @@
 
           <el-button
             type="success"
-            @click="handleSaveWorkflow"
+            @click="handleSaveWorkspace"
             style="margin-left: 10px"
           >
             Save Workspace
@@ -48,12 +67,12 @@
 
           <el-divider direction="vertical" style="margin: 0 15px" />
 
-          <el-button 
+          <el-button
             type="info"
-            @click="onOpenConfigUploadDialog"
+            @click="onOpenConfigImportDialog"
             :disabled="libcellml.status !== 'ready'"
-            >
-            Load Config Files
+          >
+            Import Config Files
           </el-button>
 
           <el-button
@@ -83,13 +102,13 @@
           <VueFlow
             @dragover="onDragOver"
             @dragleave="onDragLeave"
-            :translate-extent="finiteTranslateExtent"
+            @nodes-change="onNodeChange"
+            @edges-change="onEdgeChange"
             :max-zoom="1.5"
-            :min-zoom="0.3"
-            :connection-line-options="connectionLineOptions"
+            :min-zoom="0.1"
+            :default-edge-options="edgeLineOptions"
+            :connection-line-options="edgeLineOptions"
             :nodes="nodes"
-            fit-view-on-init
-            @nodes-change="onNodesChange"
             :delete-key-code="['Backspace', 'Delete']"
           >
             <HelperLines
@@ -136,29 +155,29 @@
     @confirm="onEditConfirm"
   />
 
-  <UploadConfigDialog
+  <ImportConfigDialog
     v-model="configDialogVisible"
     :initial-vessel-array="null"
     :initial-module-config="null"
-    @confirm="onConfigUploadConfirm"
+    @confirm="onConfigImportConfirm"
   />
 
   <SaveDialog
     v-model="saveDialogVisible"
     @confirm="onSaveConfirm"
-    :default-name="store.lastSaveName"
+    :default-name="builderStore.lastSaveName"
   />
   <SaveDialog
     v-model="exportDialogVisible"
     @confirm="onExportConfirm"
     title="Export for Circulatory Autogen"
-    :default-name="store.lastExportName"
+    :default-name="builderStore.lastExportName"
     suffix=".zip"
   />
 
   <ModuleReplacementDialog
     v-model="replacementDialogVisible"
-    :modules="store.availableModules"
+    :modules="builderStore.availableModules"
     :node-id="currentEditingNode.nodeId"
     :port-options="currentEditingNode?.portOptions || []"
     :port-labels="currentEditingNode?.portLabels || []"
@@ -176,6 +195,7 @@ import { MiniMap } from '@vue-flow/minimap'
 import Papa from 'papaparse'
 
 import { useBuilderStore } from './stores/builderStore'
+import { useFlowHistoryStore } from './stores/historyStore'
 import ModuleList from './components/ModuleList.vue'
 import Workbench from './components/WorkbenchArea.vue'
 import ModuleNode from './components/ModuleNode.vue'
@@ -184,30 +204,109 @@ import { useLoadFromConfigFiles } from './composables/useLoadFromConfigFiles'
 import EditModuleDialog from './components/EditModuleDialog.vue'
 import ModuleReplacementDialog from './components/ModuleReplacementDialog.vue'
 import SaveDialog from './components/SaveDialog.vue'
-import UploadConfigDialog from './components/UploadConfigDialog.vue'
+import ImportConfigDialog from './components/ImportConfigDialog.vue'
 import HelperLines from './components/HelperLines.vue'
 import { useScreenshot } from './services/useScreenshot'
 import { generateExportZip } from './services/caExport'
-import { getHelperLines } from './utils/utils'
-import { WORKSPACE_LIMITS } from './constants/workflow'
+import { getHelperLines } from './utils/helperLines'
+import { processModuleData } from './utils/cellml'
+
+import testModuleBGContent from './assets/bg_modules.cellml?raw'
+import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
+import testParamertersCSV from './assets/colon_FTU_parameters.csv?raw'
 
 const {
   addEdges,
+  addNodes,
+  applyNodeChanges,
+  applyEdgeChanges,
   edges,
+  findEdge,
+  findNode,
   fromObject,
   nodes,
   onConnect,
+  removeEdges,
+  removeNodes,
   setViewport,
   toObject,
   updateNodeData,
-  applyNodeChanges,
+  vueFlowRef,
 } = useVueFlow()
 
-const { onDragOver, onDrop, onDragLeave, isDragOver } = useDragAndDrop()
+const pendingHistoryNodes = new Set()
+
+const { onDragOver, onDrop, onDragLeave, isDragOver } =
+  useDragAndDrop(pendingHistoryNodes)
+const historyStore = useFlowHistoryStore()
+const { loadFromConfigFiles } = useLoadFromConfigFiles()
+const { capture } = useScreenshot()
 
 const helperLineHorizontal = ref(null)
 const helperLineVertical = ref(null)
 const alignment = ref('edge')
+
+const testData = {
+  filename: 'colon_FTU_modules.cellml',
+  content: testModuleColonContent,
+}
+
+const builderStore = useBuilderStore()
+
+const libcellmlReadyPromise = inject('$libcellml_ready')
+const libcellml = inject('$libcellml')
+const configDialogVisible = ref(false)
+const editDialogVisible = ref(false)
+const saveDialogVisible = ref(false)
+const exportDialogVisible = ref(false)
+const replacementDialogVisible = ref(false)
+const currentEditingNode = ref({ nodeId: '', ports: [], name: '' })
+const asideWidth = ref(250)
+const edgeLineOptions = ref({
+  type: 'smoothstep',
+  markerEnd: MarkerType.ArrowClosed,
+  style: {
+    strokeWidth: 5,
+    // stroke: '#b1b1b7', // Can customize color if desired.
+  },
+})
+
+const activeInteractionBuffer = new Map()
+const undoRedoSelection = false
+
+const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
+
+const exportAvailable = computed(
+  () => nodes.value.length > 0 && builderStore.parameterData.length > 0
+)
+
+onConnect((connection) => {
+  // Match what we specify in connectionLineOptions.
+  const newEdge = {
+    ...connection,
+    ...edgeLineOptions.value,
+  }
+
+  addEdges(newEdge)
+})
+
+const createSelectCommand = (changes, findFn) => {
+  return {
+    type: 'select',
+    undo: () => {
+      changes.forEach((s) => {
+        const item = findFn(s.id)
+        if (item) item.selected = s.from
+      })
+    },
+    redo: () => {
+      changes.forEach((s) => {
+        const item = findFn(s.id)
+        if (item) item.selected = s.to
+      })
+    },
+  }
+}
 
 function updateHelperLines(changes, nodes) {
   helperLineHorizontal.value = undefined
@@ -231,70 +330,250 @@ function updateHelperLines(changes, nodes) {
     helperLineVertical.value = helperLines.vertical
     alignment.value = helperLines.alignment
   }
-
-  return changes
 }
 
-function onNodesChange(changes) {
-  const updatedChanges = updateHelperLines(changes, nodes.value)
-  nodes.value = applyNodeChanges(updatedChanges)
+const detachReactivity = (item) => {
+  return JSON.parse(JSON.stringify(item))
 }
 
-onConnect((connection) => {
-  // Match what we specify in connectionLineOptions.
-  const newEdge = {
-    ...connection,
-    type: 'smoothstep',
-    markerEnd: MarkerType.ArrowClosed,
+const snapshotEdge = (change) => {
+  if (change.type === 'add') {
+    return detachReactivity(change.item)
   }
 
-  addEdges(newEdge)
-})
+  const edge = findEdge(change.id)
+  if (!edge) return null
 
-import testModuleBGContent from './assets/bg_modules.cellml?raw'
-import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
-import testParamertersCSV from './assets/colon_FTU_parameters.csv?raw'
-
-const testData = {
-  filename: 'colon_FTU_modules.cellml',
-  content: testModuleColonContent,
+  // Create a deep copy to break reactivity references
+  return detachReactivity(edge)
 }
 
-const store = useBuilderStore()
-const { loadFromConfigFiles } = useLoadFromConfigFiles()
-const libcellmlReadyPromise = inject('$libcellml_ready')
-const libcellml = inject('$libcellml')
-const editDialogVisible = ref(false)
-const saveDialogVisible = ref(false)
-const configDialogVisible = ref(false)
-const exportDialogVisible = ref(false)
-const replacementDialogVisible = ref(false)
-const currentEditingNode = ref({ nodeId: '', ports: [], name: '' })
-const asideWidth = ref(250)
-const connectionLineOptions = ref({
-  type: 'smoothstep',
-  markerEnd: MarkerType.ArrowClosed,
-  style: {
-    strokeWidth: 5,
-    // stroke: '#b1b1b7', // Can customize color if desired.
-  },
-})
+const snapshotNode = (change) => {
+  if (change.type === 'add') {
+    // For added nodes, snapshot is the node itself
+    return detachReactivity(change.item)
+  }
 
-const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
+  const node = findNode(change.id)
+  if (!node) return null
 
-const exportAvailable = computed(
-  () => nodes.value.length > 0 && store.parameterData.length > 0
-)
+  // Create a deep copy to break reactivity references
+  return detachReactivity(node)
+}
+
+const processPositionChange = (c, buffer, moveChanges) => {
+  if (c.position === undefined && c.from && buffer.has(c.id)) {
+    // Drag End
+    const start = buffer.get(c.id)
+    const end = snapshotNode({ id: c.id })
+
+    if (
+      end &&
+      (start.position.x !== end.position.x ||
+        start.position.y !== end.position.y)
+    ) {
+      moveChanges.push({ start, end })
+    }
+    buffer.delete(c.id)
+  } else if (c.position && !buffer.has(c.id)) {
+    // Drag Start
+    const snap = snapshotNode({ id: c.id })
+    if (snap) buffer.set(c.id, snap)
+  }
+}
+
+const processDimensionChange = (c, buffer) => {
+  if (historyStore.lastChangeWasAdd) {
+    historyStore.lastChangeWasAddSetter(false)
+    if (!historyStore.lastCommandHadOffsetApplied) {
+      const node = snapshotNode(c)
+      node.position = {
+        x: node.position.x - node.dimensions.width / 2,
+        y: node.position.y - node.dimensions.height / 2,
+      }
+      historyStore.replaceLastCommand({
+        type: 'add',
+        offset: 'applied',
+        undo: () => removeNodes(node.id),
+        redo: () => addNodes(node),
+      })
+    }
+  } else if (c.dimensions === undefined && buffer.has(c.id)) {
+    const startSnapshot = buffer.get(c.id)
+    const endSnapshot = snapshotNode({ id: c.id })
+
+    // Only add command if dimensions actually changed
+    if (
+      endSnapshot &&
+      (startSnapshot.dimensions.width !== endSnapshot.dimensions.width ||
+        startSnapshot.dimensions.height !== endSnapshot.dimensions.height)
+    ) {
+      historyStore.addCommand({
+        type: 'resize',
+        undo: () => {
+          const n = findNode(startSnapshot.id)
+          if (n) {
+            n.dimensions = startSnapshot.dimensions
+            n.position = startSnapshot.position
+            n.style = { ...startSnapshot.style }
+          }
+        },
+        redo: () => {
+          const n = findNode(endSnapshot.id)
+          if (n) {
+            n.dimensions = endSnapshot.dimensions
+            n.position = endSnapshot.position
+            n.style = { ...endSnapshot.style }
+          }
+        },
+      })
+    }
+    buffer.delete(c.id)
+  } else if (c.dimensions) {
+    if (!buffer.has(c.id)) {
+      const snap = snapshotNode({ id: c.id })
+      if (snap) {
+        buffer.set(c.id, snap)
+      }
+    }
+  }
+}
+
+const onNodeChange = (changes) => {
+  if (historyStore.isUndoRedoing) {
+    // If we are currently undoing/redoing, bypass history tracking
+    return applyNodeChanges(changes)
+  }
+
+  // Add node and dimension changes are single node events.
+  // All other changes can be performed on multiple nodes in a change set.
+
+  const addChanges = []
+  const removeChanges = []
+  const moveChanges = []
+  const selectChanges = []
+  changes.forEach((c) => {
+    // Deal with the changes that we need to buffer first, which are the posiiton and dimension type changes.
+    if (c.type === 'position') {
+      processPositionChange(c, activeInteractionBuffer, moveChanges)
+    } else if (c.type === 'dimensions') {
+      processDimensionChange(c, activeInteractionBuffer)
+    } else {
+      // Non-active interaction buffer changes.
+      activeInteractionBuffer.delete(c.id)
+      if (c.type === 'add') {
+        addChanges.push({ node: snapshotNode(c) })
+      } else if (c.type === 'remove') {
+        removeChanges.push({ node: snapshotNode(c) })
+      } else if (c.type === 'select' && undoRedoSelection) {
+        const node = findNode(c.id)
+        if (node) {
+          selectChanges.push({ id: c.id, from: node.selected, to: c.selected })
+        }
+      }
+    }
+  })
+
+  if (moveChanges.length) {
+    historyStore.addCommand({
+      type: 'move',
+      undo: () => {
+        moveChanges.forEach((m) => {
+          const n = findNode(m.start.id)
+          if (n) n.position = m.start.position
+        })
+      },
+      redo: () => {
+        moveChanges.forEach((m) => {
+          const n = findNode(m.end.id)
+          if (n) n.position = m.end.position
+        })
+      },
+    })
+  }
+  if (addChanges.length) {
+    const nodesToAdd = addChanges.map((c) => c.node)
+    const idsToRemove = addChanges.map((c) => c.node.id)
+
+    historyStore.lastChangeWasAddSetter(true)
+    historyStore.addCommand({
+      type: 'add',
+      offset: 'not-applied',
+      undo: () => removeNodes(idsToRemove),
+      redo: () => addNodes(nodesToAdd),
+    })
+  }
+  if (removeChanges.length) {
+    const nodesToRestore = removeChanges.map((change) => change.node)
+    const idsToRemove = removeChanges.map((change) => change.node.id)
+    historyStore.addCommand({
+      type: 'remove',
+      undo: () => addNodes(nodesToRestore),
+      redo: () => removeNodes(idsToRemove),
+    })
+  }
+  if (selectChanges.length) {
+    historyStore.addCommand(createSelectCommand(selectChanges, findNode))
+  }
+
+  updateHelperLines(changes, nodes.value)
+
+  // Have Vue Flow update the graph
+  applyNodeChanges(changes)
+}
+
+const onEdgeChange = (changes) => {
+  if (historyStore.isUndoRedoing) {
+    // If we are currently undoing/redoing, bypass history tracking
+    return applyEdgeChanges(changes)
+  }
+
+  const removeChanges = []
+  const addChanges = []
+  const selectChanges = []
+  changes.forEach((c) => {
+    if (c.type === 'remove') {
+      removeChanges.push({ edge: snapshotEdge(c) })
+    } else if (c.type === 'add') {
+      addChanges.push({ edge: snapshotEdge(c) })
+    } else if (c.type === 'select' && undoRedoSelection) {
+      const edge = findEdge(c.id)
+      selectChanges.push({ id: c.id, from: edge.selected, to: c.selected })
+    }
+  })
+
+  if (addChanges.length) {
+    const edgesToRestore = addChanges.map((change) => change.edge)
+    const idsToRemove = addChanges.map((change) => change.edge.id)
+    historyStore.addCommand({
+      undo: () => removeEdges(idsToRemove),
+      redo: () => addEdges(edgesToRestore),
+    })
+  }
+  if (removeChanges.length) {
+    const edgesToRestore = removeChanges.map((change) => change.edge)
+    const idsToRemove = removeChanges.map((change) => change.edge.id)
+    historyStore.addCommand({
+      undo: () => addEdges(edgesToRestore),
+      redo: () => removeEdges(idsToRemove),
+    })
+  }
+  if (selectChanges.length) {
+    historyStore.addCommand(createSelectCommand(selectChanges, findEdge))
+  }
+
+  applyEdgeChanges(changes)
+}
 
 const screenshotDisabled = computed(
   () => nodes.value.length === 0 && vueFlowRef.value !== null
 )
 
-function onOpenConfigUploadDialog() {
+function onOpenConfigImportDialog() {
   configDialogVisible.value = true
 }
 
-async function onConfigUploadConfirm(eventPayload) {
+async function onConfigImportConfirm(eventPayload) {
   loadFromConfigFiles(eventPayload)
 }
 
@@ -313,87 +592,13 @@ async function onEditConfirm(updatedData) {
   updateNodeData(nodeId, updatedData)
 }
 
-function processModuleData(cellmlString, fileName) {
-  let parser = new libcellml.library.Parser(false)
-  let printer = new libcellml.library.Printer()
-  let model = null
-  try {
-    model = parser.parseModel(cellmlString)
-  } catch (err) {
-    parser.delete()
-    printer.delete()
-
-    return {
-      issues: [
-        {
-          description: 'Failed to parse model.  Reason:' + err.message,
-        },
-      ],
-      type: 'parser',
-    }
-  }
-
-  let errors = []
-  let i = 0
-  if (parser.errorCount()) {
-    while (i < parser.errorCount()) {
-      let e = parser.error(i)
-      errors.push({
-        description: e.description(),
-      })
-      e.delete()
-      i++
-    }
-    parser.delete()
-    printer.delete()
-    model.delete()
-
-    return { issues: errors, type: 'parser' }
-  }
-
-  parser.delete()
-  printer.delete()
-
-  let data = []
-  for (i = 0; i < model.componentCount(); i++) {
-    let comp = model.componentByIndex(i)
-    let options = []
-    for (let j = 0; j < comp.variableCount(); j++) {
-      let varr = comp.variableByIndex(j)
-      if (
-        varr.hasInterfaceType(libcellml.library.Variable.InterfaceType.PUBLIC)
-      ) {
-        let units = varr.units()
-        options.push({
-          name: varr.name(),
-          units: units.name(),
-        })
-        units.delete()
-      }
-      varr.delete()
-    }
-    data.push({
-      name: comp.name(),
-      portOptions: options,
-      ports: [],
-      componentName: comp.name(),
-      sourceFile: fileName,
-    })
-    comp.delete()
-  }
-  // store.setAvailableModules(data)
-
-  model.delete()
-  return { type: 'success', data }
-}
-
 const handleModuleFile = (file) => {
   const filename = file.name
   const reader = new FileReader()
   reader.onload = (e) => {
     try {
       try {
-        const result = processModuleData(e.target.result, filename)
+        const result = processModuleData(libcellml, e.target.result, filename)
         if (result.type !== 'success') {
           if (result.issues) {
             ElNotification({
@@ -405,9 +610,14 @@ const handleModuleFile = (file) => {
           }
           return
         }
-        store.addModuleFile({
+        builderStore.addModuleFile({
           filename: filename,
           modules: result.data,
+        })
+        ElNotification.success({
+          title: 'Modules Loaded',
+          message: `Loaded ${result.data.length} parameters from ${file.name}.`,
+          offset: 50,
         })
       } catch (err) {
         console.error('Error parsing file:', err)
@@ -443,7 +653,7 @@ const handleParametersFile = (file) => {
     complete: (results) => {
       // results.data will be an array of objects
       // e.g., [{ param_name: 'a', value: '1' }, { param_name: 'b', value: '2' }]
-      store.setParameterData(results.data)
+      builderStore.setParameterData(results.data)
 
       ElNotification.success({
         title: 'Parameters Loaded',
@@ -482,7 +692,7 @@ async function onReplaceConfirm(updatedData) {
   replacementDialogVisible.value = false
 }
 
-function handleSaveWorkflow() {
+function handleSaveWorkspace() {
   saveDialogVisible.value = true
 }
 
@@ -506,7 +716,7 @@ async function onExportConfirm(fileName) {
       fileName,
       nodes.value,
       edges.value,
-      store.parameterData
+      builderStore.parameterData
     )
 
     if (!import.meta.env.DEVOFF) {
@@ -517,7 +727,7 @@ async function onExportConfirm(fileName) {
 
       URL.revokeObjectURL(link.href)
     }
-    store.setLastExportName(fileName)
+    builderStore.setLastExportName(fileName)
     notification.close()
     ElNotification.success({ message: 'Export successful!', offset: 50 })
   } catch (error) {
@@ -541,8 +751,8 @@ function onSaveConfirm(fileName) {
     //   viewport: viewport.value,
     // },
     store: {
-      availableModules: store.availableModules,
-      parameterData: store.parameterData,
+      availableModules: builderStore.availableModules,
+      parameterData: builderStore.parameterData,
     },
   }
 
@@ -557,13 +767,13 @@ function onSaveConfirm(fileName) {
 
   URL.revokeObjectURL(url)
 
-  store.setLastSaveName(fileName)
+  builderStore.setLastSaveName(fileName)
   ElNotification.success({ message: 'Workflow saved!', offset: 50 })
 }
 
 function mergeModules(newModules) {
   const moduleMap = new Map(
-    store.availableModules.map((mod) => [mod.filename, mod])
+    builderStore.availableModules.map((mod) => [mod.filename, mod])
   )
 
   if (newModules) {
@@ -575,12 +785,13 @@ function mergeModules(newModules) {
     }
   }
 
-  store.availableModules = Array.from(moduleMap.values())
+  builderStore.availableModules = Array.from(moduleMap.values())
 }
+
 /**
  * Reads a JSON file and restores the application state.
  */
-function handleLoadWorkflow(file) {
+function handleLoadWorkspace(file) {
   const reader = new FileReader()
 
   reader.onload = async (e) => {
@@ -593,11 +804,12 @@ function handleLoadWorkflow(file) {
       }
 
       // Clear the current Vue Flow state.
+      historyStore.clear()
       nodes.value = []
       edges.value = []
       setViewport({ x: 0, y: 0, zoom: 1 }) // Reset viewport.
       // Clear the current parameter data.
-      store.parameterData = []
+      builderStore.parameterData = []
 
       await nextTick()
 
@@ -610,7 +822,7 @@ function handleLoadWorkflow(file) {
       // edges.value = loadedState.flow.edges
 
       // Restore Pinia store state.
-      store.parameterData = loadedState.store.parameterData
+      builderStore.parameterData = loadedState.store.parameterData
       // Merge available modules.
       mergeModules(loadedState.store.availableModules)
 
@@ -626,10 +838,13 @@ function handleLoadWorkflow(file) {
   reader.readAsText(file.raw)
 }
 
-const finiteTranslateExtent = [
-  [WORKSPACE_LIMITS.MIN_X, WORKSPACE_LIMITS.MIN_Y],
-  [WORKSPACE_LIMITS.MAX_X, WORKSPACE_LIMITS.MAX_Y],
-]
+const handleUndo = () => {
+  historyStore.undo()
+}
+
+const handleRedo = () => {
+  historyStore.redo()
+}
 
 const onResizing = (event) => {
   // Prevent default to stop text selection, etc.
@@ -659,9 +874,6 @@ const startResize = (event) => {
   document.body.style.userSelect = 'none'
 }
 
-const { vueFlowRef } = useVueFlow()
-const { capture } = useScreenshot()
-
 function doPngScreenshot() {
   capture(vueFlowRef.value, { shouldDownload: true })
 }
@@ -673,11 +885,15 @@ onMounted(async () => {
   if (import.meta.env.DEV) {
     await libcellmlReadyPromise
     handleParametersFile({ raw: testParamertersCSV })
-    const result = processModuleData(testData.content, testData.filename)
+    const result = processModuleData(
+      libcellml,
+      testData.content,
+      testData.filename
+    )
     if (result.type !== 'success') {
-      throw new Error('Failed to process test module file.')
+      throw new Error('Failed to process test parameters file.')
     } else {
-      store.addModuleFile({
+      builderStore.addModuleFile({
         filename: testData.filename,
         modules: result.data,
       })

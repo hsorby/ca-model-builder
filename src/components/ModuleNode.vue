@@ -24,10 +24,7 @@
         />
       </div>
       <!-- non-editable label showing CellML component and source file (no white box) -->
-      <div 
-        v-if="data.label"
-        class="module-label">{{ data.label }}
-      </div>
+      <div v-if="data.label" class="module-label">{{ data.label }}</div>
       <div class="button-group">
         <el-dropdown trigger="click" @command="handleSetDomainType">
           <el-button size="small" circle class="module-button">
@@ -62,7 +59,12 @@
           </template>
         </el-dropdown>
 
-        <el-button size="small" circle @click="openEditDialog" class="module-button">
+        <el-button
+          size="small"
+          circle
+          @click="openEditDialog"
+          class="module-button"
+        >
           <el-icon><Edit /></el-icon>
         </el-button>
       </div>
@@ -97,31 +99,34 @@
         </template>
       </el-tooltip>
     </template>
-      <!-- context menu -->
-      <teleport to="body">
-        <div 
-          v-if="contextMenuVisible"
-          ref="contextMenu"
-          class="context-menu"
-          :style="{ top: contextMenuY + 'px', left: contextMenuX + 'px' }"
-          @click.stop
-        >
-          <ul class="context-menu-list">
-            <li @click="openReplacementDialog('replace')">Replace module</li>
-          </ul>
-        </div>
-      </teleport>
-    </div>
+    <!-- context menu -->
+    <teleport to="body">
+      <div
+        v-if="contextMenuVisible"
+        ref="contextMenu"
+        class="context-menu"
+        :style="{ top: contextMenuY + 'px', left: contextMenuX + 'px' }"
+        @click.stop
+      >
+        <ul class="context-menu-list">
+          <li @click="openReplacementDialog('replace')">Replace module</li>
+        </ul>
+      </div>
+    </teleport>
+  </div>
 </template>
 
 <script setup>
-import { computed, nextTick, ref, useId, onBeforeUnmount, onMounted } from "vue"
-import { Handle, Position, useVueFlow } from "@vue-flow/core"
-import { NodeResizer } from "@vue-flow/node-resizer"
-import { Delete, Edit, Key, Place } from "@element-plus/icons-vue"
-import { filter } from "jszip"
+import { computed, nextTick, onMounted, onBeforeUnmount, ref } from 'vue'
+import { Handle, Position, useVueFlow } from '@vue-flow/core'
+import { NodeResizer } from '@vue-flow/node-resizer'
+import { Delete, Edit, Key, Place } from '@element-plus/icons-vue'
+import { useFlowHistoryStore } from '../stores/historyStore'
+import { getHandleId } from '../utils/ports'
 
-const { updateNodeData, updateNodeInternals, setEdges } = useVueFlow()
+const { addEdges, edges, removeEdges, updateNodeData, updateNodeInternals } =
+  useVueFlow()
+const historyStore = useFlowHistoryStore()
 
 const props = defineProps({
   data: {
@@ -138,12 +143,12 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(["open-edit-dialog", "open-replacement-dialog"])
+const emit = defineEmits(['open-edit-dialog', 'open-replacement-dialog'])
 
 const moduleNode = ref(null)
 
 async function openEditDialog() {
-  emit("open-edit-dialog", {
+  emit('open-edit-dialog', {
     nodeId: props.id,
     ports: props.data.ports,
     name: props.data.name,
@@ -155,18 +160,18 @@ async function openEditDialog() {
 const domainTypeClass = computed(() => {
   return props.data.domainType
     ? `domain-type-${props.data.domainType}`
-    : "domain-type-default"
+    : 'domain-type-default'
 })
 
 function portPosition(type) {
   switch (type) {
-    case "left":
+    case 'left':
       return Position.Left
-    case "right":
+    case 'right':
       return Position.Right
-    case "top":
+    case 'top':
       return Position.Top
-    case "bottom":
+    case 'bottom':
       return Position.Bottom
     default:
       return Position.Left
@@ -174,17 +179,17 @@ function portPosition(type) {
 }
 
 function handleSetDomainType(typeCommand) {
-  const newType = typeCommand === "undefined" ? undefined : typeCommand
+  const newType = typeCommand === 'undefined' ? undefined : typeCommand
   updateNodeData(props.id, { domainType: newType })
 }
 
 function getHandleStyle(port) {
-  const portsOfSameType = props.data.ports.filter(p => p.type === port.type)
+  const portsOfSameType = props.data.ports.filter((p) => p.type === port.type)
   const n = portsOfSameType.length
 
   // Space between each port.
   const portSpacing = 16
-  const positionIndex = portsOfSameType.findIndex(p => p.uid === port.uid)
+  const positionIndex = portsOfSameType.findIndex((p) => p.uid === port.uid)
 
   // guard: if not found, fall back to 0
   const safeIndex = positionIndex === -1 ? 0 : positionIndex
@@ -192,7 +197,7 @@ function getHandleStyle(port) {
   // This calculates the offset from the center
   const offset = portSpacing * (positionIndex - (n - 1) / 2)
 
-  if (["top", "bottom"].includes(port.type)) {
+  if (['top', 'bottom'].includes(port.type)) {
     // Let CSS calculate the 50% mark and apply the offset
     return {
       left: `calc(50% + ${offset}px)`,
@@ -205,51 +210,89 @@ function getHandleStyle(port) {
   }
 }
 
+const applyPorts = async (portsToSet) => {
+  updateNodeData(props.id, { ports: portsToSet })
+
+  // Changing ports adds/removes handles, so we MUST refresh internals
+  await nextTick()
+  updateNodeInternals(props.id)
+}
+
 async function removePort(portIdToRemove) {
-  const port = props.data.ports.find(p => p.uid === portIdToRemove)
+  const oldPorts = JSON.parse(JSON.stringify(props.data.ports))
+
+  const port = oldPorts.find((p) => p.uid === portIdToRemove)
   if (!port) return
 
-  const handleId = `port_${port.type}_${port.uid}`
+  const handleId = getHandleId(port)
 
-  // Remove edges connected to this port
-  setEdges(prevEdges =>
-    prevEdges.filter(edge => edge.sourceHandle !== handleId && edge.targetHandle !== handleId)
+  // Find all edges connected to this specific port handle.
+  // We need to snapshot these edge objects so we can restore them later
+  const connectedEdges = edges.value.filter(
+    (edge) =>
+      (edge.source === props.id && edge.sourceHandle === handleId) ||
+      (edge.target === props.id && edge.targetHandle === handleId)
   )
 
-  // Create a new array filtering out the port we want to remove
-  const newPortsArray = props.data.ports.filter(
-    port => port.uid !== portIdToRemove
-  );
+  const edgesSnapshot = connectedEdges.map((edge) =>
+    JSON.parse(JSON.stringify(edge))
+  )
 
-  // Update the node's data
-  updateNodeData(props.id, { ports: newPortsArray })
+  // Define New Ports (for Redo)
+  const newPorts = props.data.ports.filter((p) => p.uid !== portIdToRemove)
 
-  // Wait for Vue to update the DOM
-  await nextTick()
+  // Add Composite Command to History
+  historyStore.executeAndAddCommand({
+    type: 'remove-port',
+    undo: async () => {
+      // Restore the port first (so the handle exists in the DOM).
+      await applyPorts(oldPorts)
 
-  // Tell Vue Flow to re-scan the node's handles
-  updateNodeInternals(props.id)
+      // Then, restore the edges.
+      if (edgesSnapshot.length > 0) {
+        addEdges(edgesSnapshot)
+      }
+    },
+    redo: async () => {
+      // Remove the edges.
+      if (edgesSnapshot.length > 0) {
+        removeEdges(edgesSnapshot.map((e) => e.id))
+      }
+
+      // Then, remove the port
+      await applyPorts(newPorts)
+    },
+  })
 }
 
 const addPort = async (portToAdd) => {
+  const oldPorts = [...props.data.ports]
   // create stable node id
   const newPort = {
     ...portToAdd,
-    uid: crypto.randomUUID()
+    uid: crypto.randomUUID(),
   }
 
   // Create a new array with the old ports + the new one
-  const newPortsArray = [...props.data.ports, newPort]
+  const newPorts = [...props.data.ports, newPort]
 
   // Tell Vue Flow to update this node's data
   // This will cause the component to re-render
-  updateNodeData(props.id, { ports: newPortsArray })
-  await nextTick()
-  updateNodeInternals(props.id)
+  await applyPorts(newPorts)
+
+  historyStore.addCommand({
+    type: 'add-port',
+    undo: async () => {
+      applyPorts(oldPorts)
+    },
+    redo: async () => {
+      applyPorts(newPorts)
+    },
+  })
 }
 
 const isEditing = ref(false)
-const editingName = ref("")
+const editingName = ref('')
 const inputRef = ref(null) // This is a template ref for the input
 
 // This function is triggered by the double-click
@@ -275,7 +318,7 @@ function StopDrag(event) {
 
 // This is triggered by pressing Enter or clicking away
 function saveEdit() {
-  if (!editingName.value || editingName.value.trim() === "") {
+  if (!editingName.value || editingName.value.trim() === '') {
     isEditing.value = false // Cancel edit if name is empty
     return
   }
@@ -293,18 +336,18 @@ const moduleListClickEl = ref(null)
 
 function onDocumentPointerDown(event) {
   // If the pointer down is inside the context menu, do nothing
-  const path = event.composedPath ? event.composedPath() : (event.path || [])
-  const cm = document.querySelector(".context-menu")
+  const path = event.composedPath ? event.composedPath() : event.path || []
+  const cm = document.querySelector('.context-menu')
   if (cm && path.includes(cm)) return
   closeContextMenu()
 }
 
 function removeMenuOpenListeners() {
-  document.removeEventListener("click", closeContextMenu)   
-  document.removeEventListener("pointerdown", onDocumentPointerDown, true)
-  document.removeEventListener("dragstart", closeContextMenu)
- if (moduleListClickEl.value) {
-    moduleListClickEl.value.removeEventListener("click", closeContextMenu)
+  document.removeEventListener('click', closeContextMenu)
+  document.removeEventListener('pointerdown', onDocumentPointerDown, true)
+  document.removeEventListener('dragstart', closeContextMenu)
+  if (moduleListClickEl.value) {
+    moduleListClickEl.value.removeEventListener('click', closeContextMenu)
     moduleListClickEl.value = null
   }
 }
@@ -315,13 +358,13 @@ function closeContextMenu() {
 }
 
 onMounted(() => {
-  document.addEventListener("module-context-open", handleExternalContextOpen)
-  document.addEventListener("contextmenu", handleDocumentContextmenu)
+  document.addEventListener('module-context-open', handleExternalContextOpen)
+  document.addEventListener('contextmenu', handleDocumentContextmenu)
 })
 
 onBeforeUnmount(() => {
-  document.removeEventListener("module-context-open", handleExternalContextOpen)
-  document.removeEventListener("contextmenu", handleDocumentContextmenu)
+  document.removeEventListener('module-context-open', handleExternalContextOpen)
+  document.removeEventListener('contextmenu', handleDocumentContextmenu)
   removeMenuOpenListeners()
 })
 
@@ -347,18 +390,18 @@ async function openContextMenu(event) {
   await nextTick()
 
   // close when clicking elsewhere and pointer down/drag start
-  document.addEventListener("click", closeContextMenu)
-  document.addEventListener("dragstart", closeContextMenu)
-  document.addEventListener("pointerdown", onDocumentPointerDown, true)
+  document.addEventListener('click', closeContextMenu)
+  document.addEventListener('dragstart', closeContextMenu)
+  document.addEventListener('pointerdown', onDocumentPointerDown, true)
 }
 
 async function openReplacementDialog() {
-  emit("open-replacement-dialog", { 
-    nodeId: props.id, 
+  emit('open-replacement-dialog', {
+    nodeId: props.id,
     nodeData: props.data,
     name: props.data.name,
     portOptions: props.data.portOptions,
-    portLabels: props.data.portLabels, 
+    portLabels: props.data.portLabels,
   })
   closeContextMenu()
 }
@@ -374,12 +417,11 @@ function handleExternalContextOpen(e) {
 function handleDocumentContextmenu(e) {
   // If the right-click target is not inside this module node, close the menu.
   if (!moduleNode.value) return
-  const path = e.composedPath ? e.composedPath() : (e.path || [])
+  const path = e.composedPath ? e.composedPath() : e.path || []
   if (!path.includes(moduleNode.value)) {
     closeContextMenu()
   }
 }
-
 </script>
 
 <style scoped>
@@ -460,7 +502,7 @@ div.module-name,
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 6px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
   min-width: 180px;
   padding: 6px 0;
 }
