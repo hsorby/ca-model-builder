@@ -69,7 +69,7 @@
 
           <el-button
             type="info"
-            @click="onOpenConfigUploadDialog"
+            @click="onOpenConfigImportDialog"
             :disabled="libcellml.status !== 'ready'"
           >
             Import Config Files
@@ -569,7 +569,7 @@ const screenshotDisabled = computed(
   () => nodes.value.length === 0 && vueFlowRef.value !== null
 )
 
-function onOpenConfigUploadDialog() {
+function onOpenConfigImportDialog() {
   configDialogVisible.value = true
 }
 
