@@ -1,4 +1,3 @@
-import { randomPortSide } from '../../utils/ports'
 
 function parseVesselNames(vesselField) {
   return Array.from(
@@ -44,7 +43,7 @@ function parseGeneralPorts(generalPorts) {
     )
     .map((port) => ({
       label: port.port_type,
-      option: [...port.variables][0], // currently limited to a single variable per port label
+      option: [...port.variables][0], // Currently limited to a single variable per port label.
       isMultiPortSum: port.multi_port == 'Sum',
     }))
 }
@@ -52,7 +51,7 @@ function parseGeneralPorts(generalPorts) {
 function buildPortLabels(moduleData) {
   const generalPortLabels = parseGeneralPorts(moduleData.general_ports)
 
-  // eventually will need to parse directional port labels and combine with general port labels
+  // Eventually will need to parse directional port labels and combine with general port labels.
   const finalPortLabels = generalPortLabels
 
   return finalPortLabels

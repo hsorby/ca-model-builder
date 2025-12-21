@@ -1,6 +1,3 @@
-// import { buildWorkflowNodes } from "./buildNodes"
-// import { buildWorkflowEdges } from "./buildEdges"
-// import { createPortAllocator } from "./portAllocator"
 import { buildPorts, buildPortLabels } from './buildPorts'
 import { getHandleId } from '../../utils/ports'
 
@@ -22,18 +19,14 @@ function buildNodes(availableModules, vessels, moduleConfig) {
     )
 
     return {
-      // RECOMMENDED: Use the vessel name as ID if unique.
-      // It makes linking edges for Dagre much easier than 'dndnode_0'.
+      // Hopefully the vessel names are unique.
       id: vessel.name,
       type: 'moduleNode',
 
-      // 1. Give them a dummy position initially
+      // Give them a dummy position initially
       position: { x: 100, y: 100 },
 
-      // 2. Do NOT set style width/height here. Let the CSS/Component decide.
-      // style: { ... },
-
-      // 3. Start invisible so the user doesn't see them stack at (0,0)
+      // Start invisible so the user doesn't see them stack at (0,0)
       style: { opacity: 0 },
 
       data: {
@@ -75,13 +68,11 @@ function buildEdges(vessels, nodes, rankdir = 'LR') {
       const targetNode = nodeMap.get(targetName)
       if (!targetNode) return
 
-      // --- SOURCE SIDE FIX ---
       // Use the index to pick a unique port. 
       // If we have more edges than ports, wrap around or reuse the last one.
       const sourcePortIndex = Math.min(index, sourcePorts.length - 1)
       const sourcePort = sourcePorts[sourcePortIndex]
 
-      // --- TARGET SIDE FIX ---
       // Get all valid target ports
       const targetPorts = targetNode.data.ports.filter(p => p.type === TARGET_PORT_TYPE)
       if (targetPorts.length === 0) return

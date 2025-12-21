@@ -208,9 +208,8 @@ import UploadConfigDialog from './components/UploadConfigDialog.vue'
 import HelperLines from './components/HelperLines.vue'
 import { useScreenshot } from './services/useScreenshot'
 import { generateExportZip } from './services/caExport'
-import { getHelperLines } from './utils/utils'
-import { WORKSPACE_LIMITS } from './constants/workflow'
-import { processModuleData } from './utils/cellmlUtils'
+import { getHelperLines } from './utils/helperLines'
+import { processModuleData } from './utils/cellml'
 
 import testModuleBGContent from './assets/bg_modules.cellml?raw'
 import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
@@ -594,7 +593,6 @@ async function onEditConfirm(updatedData) {
 }
 
 const handleModuleFile = (file) => {
-  console.log(file)
   const filename = file.name
   const reader = new FileReader()
   reader.onload = (e) => {
@@ -847,11 +845,6 @@ const handleUndo = () => {
 const handleRedo = () => {
   historyStore.redo()
 }
-
-const finiteTranslateExtent = [
-  [WORKSPACE_LIMITS.MIN_X, WORKSPACE_LIMITS.MIN_Y],
-  [WORKSPACE_LIMITS.MAX_X, WORKSPACE_LIMITS.MAX_Y],
-]
 
 const onResizing = (event) => {
   // Prevent default to stop text selection, etc.

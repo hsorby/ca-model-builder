@@ -5,9 +5,9 @@ import dagre from '@dagrejs/dagre'
 
 import { useBuilderStore } from '../stores/builderStore'
 import { useFlowHistoryStore } from '../stores/historyStore'
-import { validateWorkflowModules } from '../services/workflow/validateWorkflow'
-import { buildWorkflowGraph } from '../services/workflow/buildWorkflow'
-import { getHandleId } from '../utils/ports' // Ensure this helper extracts the UID correctly
+import { validateWorkflowModules } from '../services/import/validateWorkflow'
+import { buildWorkflowGraph } from '../services/import/buildWorkflow'
+import { getHandleId } from '../utils/ports'
 
 // ----------------------------------------------------------------------
 //  The Compound Layout
@@ -17,19 +17,19 @@ function runPortGranularLayout(nodes, edges) {
   g.setGraph({ rankdir: 'LR', ranksep: 150, nodesep: 50 })
   g.setDefaultEdgeLabel(() => ({}))
 
-  // 1. Create "Cluster" Nodes
+  // Create "Cluster" Nodes.
   nodes.forEach((node) => {
     g.setNode(node.id, { label: node.id, clusterLabelPos: 'top' })
   })
 
-  // 2. Create "Port" Nodes
+  // Create "Port" Nodes.
   const getDagrePortId = (nodeId, handleId) =>
     `DAGRE_PORT_${nodeId}_${handleId}`
 
   nodes.forEach((node) => {
     const ports = node.data.ports || []
     ports.forEach((port) => {
-      // Ensure we use the exact same ID generation logic as the edge handles
+      // Ensure we use the exact same ID generation logic as the edge handles.
       const handleId = getHandleId(port)
       const portNodeId = getDagrePortId(node.id, handleId)
 
@@ -38,22 +38,21 @@ function runPortGranularLayout(nodes, edges) {
     })
   })
 
-  // 3. Create Edges
+  // Create Edges.
   edges.forEach((edge) => {
-    // Now these handles definitely exist!
     const sourcePortId = getDagrePortId(edge.source, edge.sourceHandle)
     const targetPortId = getDagrePortId(edge.target, edge.targetHandle)
     g.setEdge(sourcePortId, targetPortId)
   })
 
-  // 4. Run Layout
+  // Run Layout.
   dagre.layout(g)
 
-  // 5. Apply Results
+  // Apply Results.
   nodes.forEach((node) => {
     const nodeWithPos = g.node(node.id)
 
-    // Update Node Position (Center to Top-Left)
+    // Update Node Position (Center to Top-Left).
     if (nodeWithPos) {
       node.position = {
         x: nodeWithPos.x - nodeWithPos.width / 2,
@@ -61,7 +60,7 @@ function runPortGranularLayout(nodes, edges) {
       }
     }
 
-    // Update Port Order (Sort by Y)
+    // Update Port Order (Sort by Y).
     if (node.data.ports) {
       node.data.ports.sort((a, b) => {
         const aId = getDagrePortId(node.id, getHandleId(a))
@@ -92,7 +91,6 @@ export function useLoadFromConfigFiles() {
   let pendingNodeDataMap = new Map()
 
   async function loadFromConfigFiles(configFiles) {
-    // await nextTick()
     try {
       const { valid, missing } = validateWorkflowModules(
         configFiles.moduleConfig,
@@ -101,7 +99,6 @@ export function useLoadFromConfigFiles() {
       if (!valid) throw new Error(`Missing modules: ${missing.join(', ')}`)
 
       historyStore.clear()
-      // historyStore.startBatch()
       nodes.value = []
       edges.value = []
       setViewport({ x: 0, y: 0, zoom: 1 })
@@ -117,7 +114,6 @@ export function useLoadFromConfigFiles() {
     } catch (error) {
       ElNotification.error(`Failed to load workflow: ${error.message}`)
       layoutPending.value = false
-      // historyStore.endBatch()
     }
   }
 
@@ -125,10 +121,10 @@ export function useLoadFromConfigFiles() {
     if (!layoutPending.value || initializedNodes.length === 0) return
 
     try {
-      // Run Layout (Calculates positions & sorts port arrays)
+      // Run Layout (Calculates positions & sorts port arrays).
       runPortGranularLayout(initializedNodes, pendingEdges)
 
-      // Add the Finalized Edges
+      // Add the Finalized Edges.
       addEdges(pendingEdges)
 
       historyStore.clear()

@@ -9,22 +9,3 @@ export function randomPortSide() {
 export function getHandleId(port) {
     return `port_${port.type}_${port.uid}`
 }
-
-export function createPortAllocator() {
-    const usedPorts = new Map()
-
-    function nextUnusedPort(node, sidePriority) {
-        const used = usedPorts.get(node.id) ?? []
-
-        const port = node.data.ports.find(
-            p => sidePriority.includes(p.type) && !used.includes(p.uid)
-        )
-
-        if (!port) return null
-        
-        usedPorts.set(node.id, [...used, ports.uid])
-        return port
-    }
-
-    return { nextUnusedPort }
-}
