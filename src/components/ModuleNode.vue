@@ -122,6 +122,7 @@ import { Handle, Position, useVueFlow } from '@vue-flow/core'
 import { NodeResizer } from '@vue-flow/node-resizer'
 import { Delete, Edit, Key, Place } from '@element-plus/icons-vue'
 import { useFlowHistoryStore } from '../stores/historyStore'
+import { getHandleId } from '../utils/ports'
 
 const { addEdges, edges, removeEdges, updateNodeData, updateNodeInternals } =
   useVueFlow()
@@ -223,7 +224,7 @@ async function removePort(portIdToRemove) {
   const port = oldPorts.find((p) => p.uid === portIdToRemove)
   if (!port) return
 
-  const handleId = `port_${port.type}_${port.uid}`
+  const handleId = getHandleId(port)
 
   // Find all edges connected to this specific port handle.
   // We need to snapshot these edge objects so we can restore them later

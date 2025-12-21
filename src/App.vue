@@ -50,22 +50,30 @@
           <el-upload
             action="#"
             :auto-upload="false"
-            :on-change="handleLoadWorkflow"
+            :on-change="handleLoadWorkspace"
             :show-file-list="false"
             accept=".json"
           >
-            <el-button type="success">Load Model</el-button>
+            <el-button type="success">Load Workspace</el-button>
           </el-upload>
 
           <el-button
             type="success"
-            @click="handleSaveWorkflow"
+            @click="handleSaveWorkspace"
             style="margin-left: 10px"
           >
-            Save Model
+            Save Workspace
           </el-button>
 
           <el-divider direction="vertical" style="margin: 0 15px" />
+
+          <el-button
+            type="info"
+            @click="onOpenConfigImportDialog"
+            :disabled="libcellml.status !== 'ready'"
+          >
+            Import Config Files
+          </el-button>
 
           <el-button
             type="info"
@@ -73,7 +81,7 @@
             style="margin-left: 10px"
             :disabled="!exportAvailable"
           >
-            Export Model
+            Export Config Files
           </el-button>
         </div>
       </div>
@@ -96,10 +104,10 @@
             @dragleave="onDragLeave"
             @nodes-change="onNodeChange"
             @edges-change="onEdgeChange"
-            :translate-extent="finiteTranslateExtent"
             :max-zoom="1.5"
-            :min-zoom="0.3"
-            :connection-line-options="connectionLineOptions"
+            :min-zoom="0.1"
+            :default-edge-options="edgeLineOptions"
+            :connection-line-options="edgeLineOptions"
             :nodes="nodes"
             :delete-key-code="['Backspace', 'Delete']"
           >
@@ -147,12 +155,18 @@
     @confirm="onEditConfirm"
   />
 
+  <ImportConfigDialog
+    v-model="configDialogVisible"
+    :initial-vessel-array="null"
+    :initial-module-config="null"
+    @confirm="onConfigImportConfirm"
+  />
+
   <SaveDialog
     v-model="saveDialogVisible"
     @confirm="onSaveConfirm"
     :default-name="builderStore.lastSaveName"
   />
-
   <SaveDialog
     v-model="exportDialogVisible"
     @confirm="onExportConfirm"
@@ -175,7 +189,7 @@
 import { computed, inject, nextTick, onMounted, ref } from 'vue'
 import { ElNotification } from 'element-plus'
 import { MarkerType, useVueFlow, VueFlow } from '@vue-flow/core'
-import { DCaret, CameraFilled } from '@element-plus/icons-vue'
+import { DCaret, CameraFilled, Upload } from '@element-plus/icons-vue'
 import { Controls, ControlButton } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import Papa from 'papaparse'
@@ -186,14 +200,16 @@ import ModuleList from './components/ModuleList.vue'
 import Workbench from './components/WorkbenchArea.vue'
 import ModuleNode from './components/ModuleNode.vue'
 import useDragAndDrop from './composables/useDnD'
+import { useLoadFromConfigFiles } from './composables/useLoadFromConfigFiles'
 import EditModuleDialog from './components/EditModuleDialog.vue'
 import ModuleReplacementDialog from './components/ModuleReplacementDialog.vue'
 import SaveDialog from './components/SaveDialog.vue'
+import ImportConfigDialog from './components/ImportConfigDialog.vue'
 import HelperLines from './components/HelperLines.vue'
 import { useScreenshot } from './services/useScreenshot'
 import { generateExportZip } from './services/caExport'
-import { getHelperLines } from './utils/utils'
-import { processModuleData } from './utils/cellmlUtils'
+import { getHelperLines } from './utils/helperLines'
+import { processModuleData } from './utils/cellml'
 
 import testModuleBGContent from './assets/bg_modules.cellml?raw'
 import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
@@ -223,7 +239,7 @@ const pendingHistoryNodes = new Set()
 const { onDragOver, onDrop, onDragLeave, isDragOver } =
   useDragAndDrop(pendingHistoryNodes)
 const historyStore = useFlowHistoryStore()
-
+const { loadFromConfigFiles } = useLoadFromConfigFiles()
 const { capture } = useScreenshot()
 
 const helperLineHorizontal = ref(null)
@@ -239,13 +255,14 @@ const builderStore = useBuilderStore()
 
 const libcellmlReadyPromise = inject('$libcellml_ready')
 const libcellml = inject('$libcellml')
+const configDialogVisible = ref(false)
 const editDialogVisible = ref(false)
 const saveDialogVisible = ref(false)
 const exportDialogVisible = ref(false)
 const replacementDialogVisible = ref(false)
 const currentEditingNode = ref({ nodeId: '', ports: [], name: '' })
 const asideWidth = ref(250)
-const connectionLineOptions = ref({
+const edgeLineOptions = ref({
   type: 'smoothstep',
   markerEnd: MarkerType.ArrowClosed,
   style: {
@@ -267,8 +284,7 @@ onConnect((connection) => {
   // Match what we specify in connectionLineOptions.
   const newEdge = {
     ...connection,
-    type: 'smoothstep',
-    markerEnd: MarkerType.ArrowClosed,
+    ...edgeLineOptions.value,
   }
 
   addEdges(newEdge)
@@ -553,6 +569,14 @@ const screenshotDisabled = computed(
   () => nodes.value.length === 0 && vueFlowRef.value !== null
 )
 
+function onOpenConfigImportDialog() {
+  configDialogVisible.value = true
+}
+
+async function onConfigImportConfirm(eventPayload) {
+  loadFromConfigFiles(eventPayload)
+}
+
 function onOpenEditDialog(eventPayload) {
   currentEditingNode.value = {
     ...eventPayload,
@@ -589,6 +613,11 @@ const handleModuleFile = (file) => {
         builderStore.addModuleFile({
           filename: filename,
           modules: result.data,
+        })
+        ElNotification.success({
+          title: 'Modules Loaded',
+          message: `Loaded ${result.data.length} parameters from ${file.name}.`,
+          offset: 50,
         })
       } catch (err) {
         console.error('Error parsing file:', err)
@@ -663,7 +692,7 @@ async function onReplaceConfirm(updatedData) {
   replacementDialogVisible.value = false
 }
 
-function handleSaveWorkflow() {
+function handleSaveWorkspace() {
   saveDialogVisible.value = true
 }
 
@@ -762,7 +791,7 @@ function mergeModules(newModules) {
 /**
  * Reads a JSON file and restores the application state.
  */
-function handleLoadWorkflow(file) {
+function handleLoadWorkspace(file) {
   const reader = new FileReader()
 
   reader.onload = async (e) => {
@@ -817,11 +846,6 @@ const handleRedo = () => {
   historyStore.redo()
 }
 
-const finiteTranslateExtent = [
-  [-2000, -2000],
-  [2000, 2000],
-]
-
 const onResizing = (event) => {
   // Prevent default to stop text selection, etc.
   event.preventDefault()
@@ -867,7 +891,7 @@ onMounted(async () => {
       testData.filename
     )
     if (result.type !== 'success') {
-      throw new Error('Failed to process test module file.')
+      throw new Error('Failed to process test parameters file.')
     } else {
       builderStore.addModuleFile({
         filename: testData.filename,
