@@ -1,4 +1,3 @@
-
 function parseVesselNames(vesselField) {
   return Array.from(
     new Set(vesselField?.trim().split(/\s+/).filter(Boolean) ?? [])
@@ -33,28 +32,23 @@ function buildPorts(vessel) {
   return ports
 }
 
-function parseGeneralPorts(generalPorts) {
-  return generalPorts
-    .filter(
-      (port) =>
-        port.port_type &&
-        Array.isArray(port.variables) &&
-        port.variables.length > 0
-    )
-    .map((port) => ({
-      label: port.port_type,
-      option: [...port.variables][0], // Currently limited to a single variable per port label.
-      isMultiPortSum: port.multi_port == 'Sum',
-    }))
-}
-
 function buildPortLabels(moduleData) {
-  const generalPortLabels = parseGeneralPorts(moduleData.general_ports)
-
-  // Eventually will need to parse directional port labels and combine with general port labels.
-  const finalPortLabels = generalPortLabels
-
-  return finalPortLabels
+  return Object.entries(moduleData)
+    .filter(
+      ([key, value]) =>
+        ['general_ports', 'entrance_ports', 'exit_ports'].includes(key) &&
+        Array.isArray(value)
+    )
+    .flatMap(([type, ports]) =>
+      ports
+        .filter((p) => p.port_type && p.variables?.length)
+        .map((p) => ({
+          portType: type,
+          label: p.port_type,
+          option: p.variables[0],
+          isMultiPortSum: p.multi_port === 'Sum',
+        }))
+    )
 }
 
 export { buildPortLabels, buildPorts }
