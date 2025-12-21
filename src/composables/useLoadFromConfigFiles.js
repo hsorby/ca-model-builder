@@ -9,9 +9,14 @@ import { validateWorkflowModules } from '../services/import/validateWorkflow'
 import { buildWorkflowGraph } from '../services/import/buildWorkflow'
 import { getHandleId } from '../utils/ports'
 
-// ----------------------------------------------------------------------
-//  The Compound Layout
-// ----------------------------------------------------------------------
+/**
+ * This function runs a dagre layout on the nodes and edges,
+ * treating ports as separate sub-nodes to achieve a port-granular layout.
+ * This allows for better organization of nodes based on their port connections.
+ * 
+ * @param {*} nodes - The array of nodes in the workflow graph.
+ * @param {*} edges - The array of edges in the workflow graph.
+ */
 function runPortGranularLayout(nodes, edges) {
   const g = new dagre.graphlib.Graph({ compound: true })
   g.setGraph({ rankdir: 'LR', ranksep: 150, nodesep: 50 })
