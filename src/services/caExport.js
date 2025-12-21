@@ -1,6 +1,6 @@
-import JSZip from "jszip"
-import Papa from "papaparse"
-import { ElNotification } from "element-plus"
+import JSZip from 'jszip'
+import Papa from 'papaparse'
+import { ElNotification } from 'element-plus'
 
 /**
  * Classifies a variable based on a list of parameters.
@@ -16,8 +16,8 @@ function classifyVariable(moduleName, variable, parameters) {
   const varName = variable.name
 
   if (!varName || !Array.isArray(parameters)) {
-    console.error("Invalid input to classifyVariable")
-    return "undefined" // Default or error state
+    console.error('Invalid input to classifyVariable')
+    return 'undefined' // Default or error state
   }
 
   for (const param of parameters) {
@@ -25,17 +25,17 @@ function classifyVariable(moduleName, variable, parameters) {
 
     // Check for an exact match first.
     if (varName === paramName) {
-      return "global_constant" // Found exact match, classification is done.
+      return 'global_constant' // Found exact match, classification is done.
     }
 
     // Check for a compound match.
     if (`${varName}_${moduleName}` === paramName) {
-      return "constant"
+      return 'constant'
     }
   }
 
   // Neither a globl constant of constant found after checking all parameters.
-  return "variable"
+  return 'variable'
 }
 
 function checkSharedPorts(nodes, edges) {
@@ -45,61 +45,68 @@ function checkSharedPorts(nodes, edges) {
     nodePortsMap.set(node.id, {
       name: node.data.name,
       entrance: (node.data.portLabels || [])
-        .filter(p => p.portType === "entrance_ports")
-        .map(p => p.label.trim().toLowerCase()),
+        .filter((p) => p.portType === 'entrance_ports')
+        .map((p) => p.label.trim().toLowerCase()),
       exit: (node.data.portLabels || [])
-        .filter(p => p.portType === "exit_ports")
-        .map(p => p.label.trim().toLowerCase()),
+        .filter((p) => p.portType === 'exit_ports')
+        .map((p) => p.label.trim().toLowerCase()),
       general: (node.data.portLabels || [])
-        .filter(p => p.portType === "general_ports")
-        .map(p => p.label.trim().toLowerCase()),
+        .filter((p) => p.portType === 'general_ports')
+        .map((p) => p.label.trim().toLowerCase()),
     })
   }
 
   const mismatches = []
 
   for (const edge of edges) {
-
     const sourcePorts = nodePortsMap.get(edge.source)
     const targetPorts = nodePortsMap.get(edge.target)
     if (!sourcePorts || !targetPorts) continue
 
     // --- Exit - Exit ---
-    const sharedExits = sourcePorts.exit.filter(label => targetPorts.exit.includes(label))
+    const sharedExits = sourcePorts.exit.filter((label) =>
+      targetPorts.exit.includes(label)
+    )
     for (const label of sharedExits) {
       mismatches.push({
         portLabel: label,
-        type: "shared_exit_ports",
+        type: 'shared_exit_ports',
         nodes: [sourcePorts.name, targetPorts.name],
       })
     }
 
     // --- Entrance - Entrance ---
-    const sharedEntrances = sourcePorts.entrance.filter(label => targetPorts.entrance.includes(label))
+    const sharedEntrances = sourcePorts.entrance.filter((label) =>
+      targetPorts.entrance.includes(label)
+    )
     for (const label of sharedEntrances) {
       mismatches.push({
         portLabel: label,
-        type: "shared_entrance_ports",
+        type: 'shared_entrance_ports',
         nodes: [sourcePorts.name, targetPorts.name],
       })
     }
 
     // --- Exit - General ---
-    const exitToGeneral = sourcePorts.exit.filter(label => targetPorts.general.includes(label))
+    const exitToGeneral = sourcePorts.exit.filter((label) =>
+      targetPorts.general.includes(label)
+    )
     for (const label of exitToGeneral) {
       mismatches.push({
         portLabel: label,
-        type: "exit_connected_to_general",
+        type: 'exit_connected_to_general',
         nodes: [sourcePorts.name, targetPorts.name],
       })
     }
 
     // --- Entrance - General ---
-    const entranceToGeneral = sourcePorts.entrance.filter(label => targetPorts.general.includes(label))
+    const entranceToGeneral = sourcePorts.entrance.filter((label) =>
+      targetPorts.general.includes(label)
+    )
     for (const label of entranceToGeneral) {
       mismatches.push({
         portLabel: label,
-        type: "entrance_connected_to_general",
+        type: 'entrance_connected_to_general',
         nodes: [sourcePorts.name, targetPorts.name],
       })
     }
@@ -116,14 +123,15 @@ function checkSharedPorts(nodes, edges) {
  * @returns {Promise<Blob>} A promise that resolves with the zip file blob.
  */
 export async function generateExportZip(fileName, nodes, edges, parameters) {
-
   try {
     const portMismatches = checkSharedPorts(nodes, edges)
 
     if (portMismatches.length) {
-      const labels = portMismatches.map(m => `${m.portLabel} (${m.nodes.join(" - ")})`)
-      throw new Error(`Mismatched port definitions: ${labels.join(", ")}`)
-    } 
+      const labels = portMismatches.map(
+        (m) => `${m.portLabel} (${m.nodes.join(' - ')})`
+      )
+      throw new Error(`Mismatched port definitions: ${labels.join(', ')}`)
+    }
 
     const zip = new JSZip()
 
@@ -136,7 +144,7 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
 
     let module_config = []
     let vessel_array = []
-    const BC_type = "nn" // Placeholder, figure out actual logic if needed.
+    const BC_type = 'nn' // Placeholder, figure out actual logic if needed.
     for (const node of nodes) {
       const inp_vessels = []
       const out_vessels = []
@@ -167,38 +175,48 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
         .map((name) => nodeNameObjMap.get(name))
         .filter(Boolean) // Filter out any undefined/missing nodes
 
-        const portTypes = ["general_ports", "entrance_ports", "exit_ports"]
-        const portsByType = {}
+      const portTypes = ['general_ports', 'entrance_ports', 'exit_ports']
+      const portsByType = {}
 
-        for (const type of portTypes) {
-          portsByType[type] = (node.data.portLabels || [])
-            .filter(pl => pl.portType === type)
-            .map(info => {
-              const currentPortLabel = info.label
+      for (const type of portTypes) {
+        portsByType[type] = (node.data.portLabels || [])
+          .filter((pl) => pl.portType === type)
+          .map((info) => {
+            const currentPortLabel = info.label
 
-              // Count connected nodes with same port label
-              const connectedCount = connectedNodeObjects.reduce((count, connectedNode) => {
-                return count + ((connectedNode.data.portLabels || []).some(pl => pl.label === currentPortLabel) ? 1 : 0)
-              }, 0)
+            // Count connected nodes with same port label
+            const connectedCount = connectedNodeObjects.reduce(
+              (count, connectedNode) => {
+                return (
+                  count +
+                  ((connectedNode.data.portLabels || []).some(
+                    (pl) => pl.label === currentPortLabel
+                  )
+                    ? 1
+                    : 0)
+                )
+              },
+              0
+            )
 
-              const portEntry = {
-                port_type: currentPortLabel,
-                variables: [info.option] || [],
-              }
+            const portEntry = {
+              port_type: currentPortLabel,
+              variables: [info.option] || [],
+            }
 
-              if (info.isMultiPortSum) portEntry.multi_port = "Sum"
-              else if (connectedCount > 1) portEntry.multi_port = "True"
+            if (info.isMultiPortSum) portEntry.multi_port = 'Sum'
+            else if (connectedCount > 1) portEntry.multi_port = 'True'
 
-              return portEntry
-            })
-        }
+            return portEntry
+          })
+      }
 
       let variablesAndUnits = []
       for (const variable of node.data.portOptions || []) {
         variablesAndUnits.push([
           variable.name,
-          variable.units || "missing",
-          "access",
+          variable.units || 'missing',
+          'access',
           classifyVariable(node.data.name, variable, parameters),
         ])
       }
@@ -206,7 +224,7 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
       module_config.push({
         vessel_type: node.data.name,
         BC_type: BC_type,
-        module_format: "cellml",
+        module_format: 'cellml',
         module_file: node.data.sourceFile,
         module_type: node.data.componentName,
         entrance_ports: portsByType.entrance_ports || [],
@@ -218,8 +236,8 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
         name: node.data.name,
         BC_type: BC_type,
         vessel_type: node.data.name,
-        inp_vessels: inp_vessels.join(" "),
-        out_vessels: out_vessels.join(" "),
+        inp_vessels: inp_vessels.join(' '),
+        out_vessels: out_vessels.join(' '),
       })
     }
 
@@ -232,8 +250,8 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
     zip.file(`${fileName}_vessel_array.csv`, csvData)
 
     const zipBlob = await zip.generateAsync({
-      type: "blob",
-      compression: "DEFLATE",
+      type: 'blob',
+      compression: 'DEFLATE',
       compressionOptions: {
         level: 9,
       },
@@ -241,9 +259,7 @@ export async function generateExportZip(fileName, nodes, edges, parameters) {
 
     return zipBlob
   } catch (error) {
-      ElNotification.error(
-        `Failed to export config files: ${error.message}`
-      )
-      throw error
-    }
+    ElNotification.error(`Failed to export config files: ${error.message}`)
+    throw error
+  }
 }
