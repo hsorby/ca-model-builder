@@ -155,11 +155,11 @@
     @confirm="onEditConfirm"
   />
 
-  <UploadConfigDialog
+  <ImportConfigDialog
     v-model="configDialogVisible"
     :initial-vessel-array="null"
     :initial-module-config="null"
-    @confirm="onConfigUploadConfirm"
+    @confirm="onConfigImportConfirm"
   />
 
   <SaveDialog
@@ -204,7 +204,7 @@ import { useLoadFromConfigFiles } from './composables/useLoadFromConfigFiles'
 import EditModuleDialog from './components/EditModuleDialog.vue'
 import ModuleReplacementDialog from './components/ModuleReplacementDialog.vue'
 import SaveDialog from './components/SaveDialog.vue'
-import UploadConfigDialog from './components/UploadConfigDialog.vue'
+import ImportConfigDialog from './components/ImportConfigDialog.vue'
 import HelperLines from './components/HelperLines.vue'
 import { useScreenshot } from './services/useScreenshot'
 import { generateExportZip } from './services/caExport'
@@ -573,7 +573,7 @@ function onOpenConfigImportDialog() {
   configDialogVisible.value = true
 }
 
-async function onConfigUploadConfirm(eventPayload) {
+async function onConfigImportConfirm(eventPayload) {
   loadFromConfigFiles(eventPayload)
 }
 

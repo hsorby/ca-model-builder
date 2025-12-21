@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="Upload Configuration Files"
+    title="Import Configuration Files"
     width="400px"
     teleported
     @closed="resetForm"
