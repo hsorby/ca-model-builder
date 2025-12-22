@@ -1,5 +1,6 @@
 import { buildPorts, buildPortLabels } from './buildPorts'
 import { getHandleId } from '../../utils/ports'
+import { SOURCE_PORT_TYPE, TARGET_PORT_TYPE } from '../../utils/constants'
 
 function buildNodes(availableModules, vessels, moduleConfig) {
   const moduleLookup = new Map()
@@ -41,12 +42,9 @@ function buildNodes(availableModules, vessels, moduleConfig) {
   })
 }
 
-function buildEdges(vessels, nodes, rankdir = 'LR') { 
+function buildEdges(vessels, nodes) {
   const edges = []
-  const nodeMap = new Map(nodes.map(n => [n.id, n]))
-
-  const SOURCE_PORT_TYPE = rankdir === 'LR' ? 'right' : 'bottom'
-  const TARGET_PORT_TYPE = rankdir === 'LR' ? 'left' : 'top'
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]))
 
   // We need to track how many INPUT connections a target has received
   // so we don't pile them all onto its first input port.
@@ -59,8 +57,10 @@ function buildEdges(vessels, nodes, rankdir = 'LR') {
     if (!sourceNode) return
 
     // Get ALL valid source ports
-    const sourcePorts = sourceNode.data.ports.filter(p => p.type === SOURCE_PORT_TYPE)
-    if (sourcePorts.length === 0) return 
+    const sourcePorts = sourceNode.data.ports.filter(
+      (p) => p.type === SOURCE_PORT_TYPE
+    )
+    if (sourcePorts.length === 0) return
 
     const targets = vessel.out_vessels.split(' ')
 
@@ -68,13 +68,15 @@ function buildEdges(vessels, nodes, rankdir = 'LR') {
       const targetNode = nodeMap.get(targetName)
       if (!targetNode) return
 
-      // Use the index to pick a unique port. 
+      // Use the index to pick a unique port.
       // If we have more edges than ports, wrap around or reuse the last one.
       const sourcePortIndex = Math.min(index, sourcePorts.length - 1)
       const sourcePort = sourcePorts[sourcePortIndex]
 
       // Get all valid target ports
-      const targetPorts = targetNode.data.ports.filter(p => p.type === TARGET_PORT_TYPE)
+      const targetPorts = targetNode.data.ports.filter(
+        (p) => p.type === TARGET_PORT_TYPE
+      )
       if (targetPorts.length === 0) return
 
       // Determine which input slot on the target we should use

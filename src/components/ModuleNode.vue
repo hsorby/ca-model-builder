@@ -79,10 +79,10 @@
         :show-after="1000"
       >
         <Handle
-          :id="'port_' + port.type + '_' + port.uid"
+          :id="getHandleId(port)"
           :ref="'handle_' + port.type + '_' + port.uid"
-          type="source"
-          :position="portPosition(port.type)"
+          :type="port.type"
+          :position="port.position"
           :style="getHandleStyle(port)"
           class="port-handle"
         />
@@ -163,8 +163,8 @@ const domainTypeClass = computed(() => {
     : 'domain-type-default'
 })
 
-function portPosition(type) {
-  switch (type) {
+function portPosition(position) {
+  switch (position) {
     case 'left':
       return Position.Left
     case 'right':
@@ -184,7 +184,7 @@ function handleSetDomainType(typeCommand) {
 }
 
 function getHandleStyle(port) {
-  const portsOfSameType = props.data.ports.filter((p) => p.type === port.type)
+  const portsOfSameType = props.data.ports.filter((p) => p.position === port.position)
   const n = portsOfSameType.length
 
   // Space between each port.
@@ -197,7 +197,8 @@ function getHandleStyle(port) {
   // This calculates the offset from the center
   const offset = portSpacing * (positionIndex - (n - 1) / 2)
 
-  if (['top', 'bottom'].includes(port.type)) {
+  if (['top', 'bottom'].includes(port.position
+  )) {
     // Let CSS calculate the 50% mark and apply the offset
     return {
       left: `calc(50% + ${offset}px)`,

@@ -213,6 +213,7 @@ import { processModuleData } from './utils/cellml'
 
 import testModuleBGContent from './assets/bg_modules.cellml?raw'
 import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
+import testModuleNewColonContent from './assets/colon_FTU_modules_new.cellml?raw'
 import testParamertersCSV from './assets/colon_FTU_parameters.csv?raw'
 
 const {
@@ -248,7 +249,7 @@ const alignment = ref('edge')
 
 const testData = {
   filename: 'colon_FTU_modules.cellml',
-  content: testModuleColonContent,
+  content: testModuleNewColonContent,
 }
 
 const builderStore = useBuilderStore()

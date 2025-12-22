@@ -1,3 +1,5 @@
+import { SOURCE_PORT_TYPE, TARGET_PORT_TYPE } from "../../utils/constants"
+
 function parseVesselNames(vesselField) {
   return Array.from(
     new Set(vesselField?.trim().split(/\s+/).filter(Boolean) ?? [])
@@ -12,7 +14,7 @@ function buildPorts(vessel) {
     inputs.forEach((name) => {
       ports.push({
         uid: crypto.randomUUID(),
-        type: 'left',
+        type: TARGET_PORT_TYPE,
         name,
       })
     })
@@ -23,7 +25,7 @@ function buildPorts(vessel) {
     outputs.forEach((name) => {
       ports.push({
         uid: crypto.randomUUID(),
-        type: 'right',
+        type: SOURCE_PORT_TYPE,
         name,
       })
     })
