@@ -222,6 +222,7 @@ export function useLoadFromConfigFiles() {
 
       historyStore.clear()
       await nextTick()
+
       fitView({ padding: 0.2, duration: 800 })
     } catch (err) {
       historyStore.clear()

@@ -25,6 +25,13 @@
               Load Parameters
             </el-button>
           </el-upload>
+          <el-button
+            type="primary"
+            @click="onOpenMacroBuilderDialog"
+            style="margin-left: 10px"
+          >
+            Macro Build
+          </el-button>
 
           <el-divider direction="vertical" style="margin: 0 15px" />
 
@@ -100,6 +107,7 @@
       <el-main class="workbench-main">
         <div class="dnd-flow" @drop="onDrop">
           <VueFlow
+            :id="FLOW_IDS.MAIN"
             @dragover="onDragOver"
             @dragleave="onDragLeave"
             @nodes-change="onNodeChange"
@@ -167,6 +175,7 @@
     @confirm="onSaveConfirm"
     :default-name="builderStore.lastSaveName"
   />
+
   <SaveDialog
     v-model="exportDialogVisible"
     @confirm="onExportConfirm"
@@ -183,33 +192,43 @@
     :port-labels="currentEditingNode?.portLabels || []"
     @confirm="onReplaceConfirm"
   />
+
+  <MacroBuilderDialog
+    v-model="macroBuilderDialogVisible"
+    @generate="onMacroBuilderGenerate"
+    @edit-node="onOpenEditDialog"
+    :modules="builderStore.availableModules"
+  />
 </template>
 
 <script setup>
 import { computed, inject, nextTick, onMounted, ref } from 'vue'
 import { ElNotification } from 'element-plus'
-import { MarkerType, useVueFlow, VueFlow } from '@vue-flow/core'
-import { DCaret, CameraFilled, Upload } from '@element-plus/icons-vue'
+import { useVueFlow, VueFlow } from '@vue-flow/core'
+import { DCaret, CameraFilled } from '@element-plus/icons-vue'
 import { Controls, ControlButton } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import Papa from 'papaparse'
 
 import { useBuilderStore } from './stores/builderStore'
 import { useFlowHistoryStore } from './stores/historyStore'
+import useDragAndDrop from './composables/useDnD'
+import { useLoadFromConfigFiles } from './composables/useLoadFromConfigFiles'
+import { useResizableAside } from './composables/useResizableAside'
 import ModuleList from './components/ModuleList.vue'
 import Workbench from './components/WorkbenchArea.vue'
 import ModuleNode from './components/ModuleNode.vue'
-import useDragAndDrop from './composables/useDnD'
-import { useLoadFromConfigFiles } from './composables/useLoadFromConfigFiles'
 import EditModuleDialog from './components/EditModuleDialog.vue'
 import ModuleReplacementDialog from './components/ModuleReplacementDialog.vue'
 import SaveDialog from './components/SaveDialog.vue'
 import ImportConfigDialog from './components/ImportConfigDialog.vue'
+import MacroBuilderDialog from './components/MacroBuilderDialog.vue'
 import HelperLines from './components/HelperLines.vue'
 import { useScreenshot } from './services/useScreenshot'
 import { generateExportZip } from './services/caExport'
 import { getHelperLines } from './utils/helperLines'
 import { processModuleData } from './utils/cellml'
+import { edgeLineOptions, FLOW_IDS } from './utils/constants'
 
 import testModuleBGContent from './assets/bg_modules.cellml?raw'
 import testModuleColonContent from './assets/colon_FTU_modules.cellml?raw'
@@ -233,7 +252,7 @@ const {
   toObject,
   updateNodeData,
   vueFlowRef,
-} = useVueFlow()
+} = useVueFlow(FLOW_IDS.MAIN)
 
 const pendingHistoryNodes = new Set()
 
@@ -242,6 +261,7 @@ const { onDragOver, onDrop, onDragLeave, isDragOver } =
 const historyStore = useFlowHistoryStore()
 const { loadFromConfigFiles } = useLoadFromConfigFiles()
 const { capture } = useScreenshot()
+const { width: asideWidth, startResize } = useResizableAside(200, 150, 400)
 
 const helperLineHorizontal = ref(null)
 const helperLineVertical = ref(null)
@@ -261,15 +281,12 @@ const editDialogVisible = ref(false)
 const saveDialogVisible = ref(false)
 const exportDialogVisible = ref(false)
 const replacementDialogVisible = ref(false)
-const currentEditingNode = ref({ nodeId: '', ports: [], name: '' })
-const asideWidth = ref(250)
-const edgeLineOptions = ref({
-  type: 'smoothstep',
-  markerEnd: MarkerType.ArrowClosed,
-  style: {
-    strokeWidth: 5,
-    // stroke: '#b1b1b7', // Can customize color if desired.
-  },
+const macroBuilderDialogVisible = ref(false)
+const currentEditingNode = ref({
+  nodeId: '',
+  instanceId: '',
+  ports: [],
+  name: '',
 })
 
 const activeInteractionBuffer = new Map()
@@ -285,7 +302,7 @@ onConnect((connection) => {
   // Match what we specify in connectionLineOptions.
   const newEdge = {
     ...connection,
-    ...edgeLineOptions.value,
+    ...edgeLineOptions,
   }
 
   addEdges(newEdge)
@@ -586,9 +603,16 @@ function onOpenEditDialog(eventPayload) {
   editDialogVisible.value = true
 }
 
+function onOpenMacroBuilderDialog() {
+  macroBuilderDialogVisible.value = true
+}
+
 async function onEditConfirm(updatedData) {
-  const nodeId = currentEditingNode.value.nodeId
+  const { nodeId, instanceId } = currentEditingNode.value
   if (!nodeId) return
+
+  const targetInstance = instanceId || FLOW_IDS.MAIN
+  const { updateNodeData } = useVueFlow(targetInstance)
 
   updateNodeData(nodeId, updatedData)
 }
@@ -673,6 +697,12 @@ const handleParametersFile = (file) => {
 }
 
 const nodeRefs = ref({})
+
+async function onMacroBuilderGenerate(data) {
+  console.log('Macro builder generated data:', data)
+  // Handle macro builder confirmation logic here
+  macroBuilderDialogVisible.value = false
+}
 
 function onOpenReplacementDialog(eventPayload) {
   currentEditingNode.value = {
@@ -847,34 +877,6 @@ const handleRedo = () => {
   historyStore.redo()
 }
 
-const onResizing = (event) => {
-  // Prevent default to stop text selection, etc.
-  event.preventDefault()
-
-  // Set the new width, but with constraints
-  // (e.g., min 200px, max 500px)
-  asideWidth.value = Math.max(200, Math.min(event.clientX, 500))
-}
-
-// This function removes the global listeners
-const stopResize = () => {
-  window.removeEventListener('mousemove', onResizing)
-  window.removeEventListener('mouseup', stopResize)
-  // Re-enable text selection
-  document.body.style.userSelect = ''
-}
-
-// This function is called on mousedown
-const startResize = (event) => {
-  event.preventDefault()
-
-  // Add the listeners to the entire window
-  window.addEventListener('mousemove', onResizing)
-  window.addEventListener('mouseup', stopResize)
-  // Disable text selection globally while dragging
-  document.body.style.userSelect = 'none'
-}
-
 function doPngScreenshot() {
   capture(vueFlowRef.value, { shouldDownload: true })
 }
@@ -921,17 +923,6 @@ body {
   display: flex;
 }
 
-.module-aside {
-  padding: 20px;
-  border-right: 1px solid #dcdfe6;
-  background-color: #fcfcfc;
-
-  display: flex;
-  flex-direction: column;
-
-  flex-shrink: 0;
-}
-
 .workbench-main {
   position: relative;
   background-color: #f4f4f5;
@@ -949,40 +940,6 @@ body {
 .vue-flow__edge.selected .vue-flow__edge-path {
   stroke: #409eff; /* Element Plus primary color */
   stroke-width: 7px;
-}
-
-.resize-handle {
-  width: 5px;
-  height: 100%;
-  /* transform: translateY(50%); */
-  cursor: col-resize;
-  background-color: #f4f2f2;
-  border-left: 1px solid #dcdfe6;
-  border-right: 1px solid #dcdfe6;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.resize-handle:hover {
-  background-color: #e0e0e0;
-}
-
-.handle-icon {
-  /* Center the icon */
-  position: absolute;
-  top: 50%;
-  left: 50%;
-
-  /* This does three things:
-    1. translate(-50%, -50%): Moves the icon back by half its own size to perfectly center it.
-    2. rotate(90deg): Rotates it to point left/right.
-  */
-  transform: translate(-53%, -50%) rotate(90deg);
-
-  /* Style it */
-  font-size: 26px;
-  color: #434344; /* Element Plus secondary text color */
-  z-index: 10;
 }
 
 .file-io-buttons {
