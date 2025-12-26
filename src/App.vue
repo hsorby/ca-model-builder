@@ -226,6 +226,7 @@ import MacroBuilderDialog from './components/MacroBuilderDialog.vue'
 import HelperLines from './components/HelperLines.vue'
 import { useScreenshot } from './services/useScreenshot'
 import { generateExportZip } from './services/caExport'
+import { useMacroGenerator } from './services/generate/generateWorkflow'
 import { getHelperLines } from './utils/helperLines'
 import { processModuleData } from './utils/cellml'
 import { edgeLineOptions, FLOW_IDS } from './utils/constants'
@@ -251,8 +252,10 @@ const {
   setViewport,
   toObject,
   updateNodeData,
+  viewport,
   vueFlowRef,
 } = useVueFlow(FLOW_IDS.MAIN)
+const { processMacroGeneration } = useMacroGenerator()
 
 const pendingHistoryNodes = new Set()
 
@@ -699,9 +702,17 @@ const handleParametersFile = (file) => {
 const nodeRefs = ref({})
 
 async function onMacroBuilderGenerate(data) {
-  console.log('Macro builder generated data:', data)
-  // Handle macro builder confirmation logic here
+  handleMacroGeneration(data)
   macroBuilderDialogVisible.value = false
+}
+
+function handleMacroGeneration(macroPayload) {
+  // Insert at the center of the current view.
+  // We approximate the center by negating the viewport x/y.
+  const startX = -viewport.value.x / viewport.value.zoom + 100
+  const startY = -viewport.value.y / viewport.value.zoom + 100
+
+  processMacroGeneration(macroPayload, { x: startX, y: startY })
 }
 
 function onOpenReplacementDialog(eventPayload) {

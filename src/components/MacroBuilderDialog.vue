@@ -75,17 +75,10 @@ import { useResizableAside } from '../composables/useResizableAside'
 import useDragAndDrop from '../composables/useDnD'
 import { edgeLineOptions, FLOW_IDS } from '../utils/constants'
 
-const {
-  addNodes,
-  nodes,
-  onDragOver,
-  onDragLeave,
-  onNodeChange,
-  onEdgeChange,
-  onConnect,
-  project,
-  toObject, // Used to serialize the result
-} = useVueFlow(FLOW_IDS.MACRO) // Unique ID separates this from main canvas.
+const { edges, nodes, onDragLeave, onNodeChange, onEdgeChange } = useVueFlow(
+  FLOW_IDS.MACRO
+) // Unique ID separates this from main canvas.
+
 const previousNodes = new Set()
 const { onDrop } = useDragAndDrop(previousNodes)
 
@@ -104,9 +97,9 @@ const multiplier = ref(1)
 const nodeRefs = ref({})
 
 function onOpenEditDialog(eventPayload) {
-  emit('edit-node', { 
-    ...eventPayload, 
-    instanceId: FLOW_IDS.MACRO
+  emit('edit-node', {
+    ...eventPayload,
+    instanceId: FLOW_IDS.MACRO,
   })
 }
 
@@ -115,7 +108,26 @@ function closeDialog() {
 }
 
 function generateMacro() {
-  const macroData = toObject()
+  const serializedNodes = nodes.value.map((node) => {
+    const dataSnapshot = JSON.parse(JSON.stringify(node.data))
+
+    return {
+      id: node.id,
+      type: node.type,
+      position: { ...node.position },
+      data: dataSnapshot,
+      width: node.dimensions?.width || node.width || 150, // Fallback safe
+      height: node.dimensions?.height || node.height || 50,
+    }
+  })
+
+  const serializedEdges = edges.value.map((e) => ({ ...e }))
+
+  const macroData = {
+    flow: { nodes: serializedNodes, edges: serializedEdges },
+    repeatCount: multiplier.value,
+  }
+
   emit('generate', macroData)
   closeDialog()
 }
