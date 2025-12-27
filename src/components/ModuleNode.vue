@@ -45,7 +45,7 @@
           </template>
         </el-dropdown>
 
-        <el-dropdown trigger="click" @command="addPort({ type: $event })">
+        <el-dropdown trigger="click" @command="addPort({ side: $event })">
           <el-button size="small" circle class="module-button">
             <el-icon><Place /></el-icon>
           </el-button>
@@ -80,9 +80,8 @@
       >
         <Handle
           :id="getHandleId(port)"
-          :ref="'handle_' + port.type + '_' + port.uid"
-          :type="port.type"
-          :position="port.position"
+          :ref="'handle_' + port.side + '_' + port.uid"
+          :position="portPosition(port.side)"
           :style="getHandleStyle(port)"
           class="port-handle"
         />
@@ -163,8 +162,8 @@ const domainTypeClass = computed(() => {
     : 'domain-type-default'
 })
 
-function portPosition(position) {
-  switch (position) {
+function portPosition(side) {
+  switch (side) {
     case 'left':
       return Position.Left
     case 'right':
@@ -184,7 +183,7 @@ function handleSetDomainType(typeCommand) {
 }
 
 function getHandleStyle(port) {
-  const portsOfSameType = props.data.ports.filter((p) => p.position === port.position)
+  const portsOfSameType = props.data.ports.filter((p) => p.side === port.side)
   const n = portsOfSameType.length
 
   // Space between each port.
@@ -197,7 +196,7 @@ function getHandleStyle(port) {
   // This calculates the offset from the center
   const offset = portSpacing * (positionIndex - (n - 1) / 2)
 
-  if (['top', 'bottom'].includes(port.position
+  if (['top', 'bottom'].includes(port.side
   )) {
     // Let CSS calculate the 50% mark and apply the offset
     return {
@@ -274,6 +273,7 @@ const addPort = async (portToAdd) => {
     uid: crypto.randomUUID(),
   }
 
+  console.log('Adding port:', newPort)
   // Create a new array with the old ports + the new one
   const newPorts = [...props.data.ports, newPort]
 

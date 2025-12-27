@@ -7,5 +7,5 @@ export function randomPortSide() {
 }
 
 export function getHandleId(port) {
-    return `port_${port.type}_${port.uid}`
+    return `port_${port.uid}`
 }

@@ -45,7 +45,7 @@
     <template #footer>
       <div class="config-panel">
         <el-input-number v-model="multiplier" label="Repeat Count" />
-        <el-button @click="closeDialog" type="">Cancel</el-button>
+        <el-button @click="closeDialog">Cancel</el-button>
         <el-button @click="generateMacro" type="primary"
           >Generate Macro Node</el-button
         >
@@ -75,7 +75,7 @@ import { useResizableAside } from '../composables/useResizableAside'
 import useDragAndDrop from '../composables/useDnD'
 import { edgeLineOptions, FLOW_IDS } from '../utils/constants'
 
-const { edges, nodes, onDragLeave, onNodeChange, onEdgeChange } = useVueFlow(
+const { addEdges, edges, nodes, onConnect, onDragLeave, onNodeChange, onEdgeChange } = useVueFlow(
   FLOW_IDS.MACRO
 ) // Unique ID separates this from main canvas.
 
@@ -95,6 +95,17 @@ const emit = defineEmits(['update:modelValue', 'generate', 'edit-node'])
 
 const multiplier = ref(1)
 const nodeRefs = ref({})
+
+
+onConnect((connection) => {
+  // Match what we specify in connectionLineOptions.
+  const newEdge = {
+    ...connection,
+    ...edgeLineOptions,
+  }
+
+  addEdges(newEdge)
+})
 
 function onOpenEditDialog(eventPayload) {
   emit('edit-node', {
