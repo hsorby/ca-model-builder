@@ -197,7 +197,6 @@
     v-model="macroBuilderDialogVisible"
     @generate="onMacroBuilderGenerate"
     @edit-node="onOpenEditDialog"
-    :modules="builderStore.availableModules"
   />
 </template>
 

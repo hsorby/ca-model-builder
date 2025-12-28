@@ -8,9 +8,8 @@
     <div class="ports-container">
        <div v-for="port in targetPorts" :key="port.id" class="port-wrapper">
           <Handle 
-            v-if="port.type === 'target'"
             :id="port.id" 
-            :position="Position.Left" 
+            :position="portPosition(port.side)" 
             type="target"
           />
           <span v-if="port.type === 'target'">{{ port.label }}</span>
@@ -21,7 +20,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useVueFlow, Handle, Position } from '@vue-flow/core'
+import { useVueFlow, Handle } from '@vue-flow/core'
+import { portPosition } from '../utils/ports'
 
 const props = defineProps(['id', 'data'])
 const { findNode } = useVueFlow()
@@ -34,6 +34,7 @@ const targetNode = computed(() => {
 
 // 2. Mimic its ports
 const targetPorts = computed(() => {
+  console.log('Ghost Node Target:', targetNode.value)
   return targetNode.value?.data?.ports || []
 })
 </script>

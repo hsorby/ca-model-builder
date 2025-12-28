@@ -15,5 +15,6 @@ export const FLOW_IDS = {
   MACRO: 'macro-builder-editor'
 }
 
+export const GHOST_NODE_TYPE = 'ghostNode'
 export const GHOST_MODULE_FILENAME = 'ghostModule.cellml'
 export const GHOST_MODULE_DEFINITION = { filename: GHOST_MODULE_FILENAME, modules: [{name: 'Ghost', sourceFile: GHOST_MODULE_FILENAME}] }

@@ -117,11 +117,11 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onBeforeUnmount, ref } from 'vue'
-import { Handle, Position, useVueFlow } from '@vue-flow/core'
+import { Handle, useVueFlow } from '@vue-flow/core'
 import { NodeResizer } from '@vue-flow/node-resizer'
 import { Delete, Edit, Key, Place } from '@element-plus/icons-vue'
 import { useFlowHistoryStore } from '../stores/historyStore'
-import { getHandleId } from '../utils/ports'
+import { getHandleId, portPosition } from '../utils/ports'
 
 const { addEdges, edges, removeEdges, updateNodeData, updateNodeInternals } =
   useVueFlow()
@@ -161,21 +161,6 @@ const domainTypeClass = computed(() => {
     ? `domain-type-${props.data.domainType}`
     : 'domain-type-default'
 })
-
-function portPosition(side) {
-  switch (side) {
-    case 'left':
-      return Position.Left
-    case 'right':
-      return Position.Right
-    case 'top':
-      return Position.Top
-    case 'bottom':
-      return Position.Bottom
-    default:
-      return Position.Left
-  }
-}
 
 function handleSetDomainType(typeCommand) {
   const newType = typeCommand === 'undefined' ? undefined : typeCommand

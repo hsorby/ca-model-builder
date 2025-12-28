@@ -129,30 +129,31 @@ export function useMacroGenerator() {
           })
         }
       })
-    }
+      if (i > 0) {
+        const prevInstanceMap = createdInstances[i - 1]
+        const currentInstanceMap = createdInstances[i]
 
-    if (i > 0) {
-      const prevInstanceMap = createdInstances[i - 1]
-      const currentInstanceMap = createdInstances[i]
-      
-      chainingEdges.forEach(chainEdge => {
-        // 1. Find the Ghost Node this edge was pointing to
-        const ghostNode = ghostNodes.find(g => g.id === chainEdge.targetGhostId)
-        
-        // 2. Find who the Ghost was mimicking (e.g., Node A)
-        const originalTargetId = ghostNode.data.targetNodeId
-        
-        // 3. Connect:
-        // Source: The node from Previous Iteration
-        // Target: The node from Current Iteration (the one the Ghost mimicked)
-        newEdges.push({
-          id: `chain_${i}_${chainEdge.id}`,
-          source: prevInstanceMap.get(chainEdge.source), // Source from Prev
-          sourceHandle: chainEdge.sourceHandle,
-          target: currentInstanceMap.get(originalTargetId), // Target from Curr
-          targetHandle: chainEdge.targetHandle
+        chainingEdges.forEach((chainEdge) => {
+          // 1. Find the Ghost Node this edge was pointing to
+          const ghostNode = ghostNodes.find(
+            (g) => g.id === chainEdge.targetGhostId
+          )
+
+          // 2. Find who the Ghost was mimicking (e.g., Node A)
+          const originalTargetId = ghostNode.data.targetNodeId
+
+          // 3. Connect:
+          // Source: The node from Previous Iteration
+          // Target: The node from Current Iteration (the one the Ghost mimicked)
+          newEdges.push({
+            id: `chain_${i}_${chainEdge.id}`,
+            source: prevInstanceMap.get(chainEdge.source), // Source from Prev
+            sourceHandle: chainEdge.sourceHandle,
+            target: currentInstanceMap.get(originalTargetId), // Target from Curr
+            targetHandle: chainEdge.targetHandle,
+          })
         })
-      })
+      }
     }
 
     // 3. Batch Add to Main Flow

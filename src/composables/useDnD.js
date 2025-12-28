@@ -1,7 +1,7 @@
 import { useVueFlow } from '@vue-flow/core'
 import { ref, shallowRef, watch } from 'vue'
 
-import { GHOST_MODULE_FILENAME } from '../utils/constants'
+import { GHOST_MODULE_FILENAME, GHOST_NODE_TYPE } from '../utils/constants'
 
 /**
  * In a real world scenario you'd want to avoid creating refs in a global scope like this as they might not be cleaned up properly.
@@ -44,6 +44,9 @@ export default function useDragAndDrop(pendingHistoryNodes) {
     // Return the next ID in the sequence
     return `dndnode_${maxId + 1}`
   }
+
+  const isGhostSetupOpen = ref(false)
+  const pendingGhostNodeId = ref(null)
 
   watch(isDragging, (dragging) => {
     document.body.style.userSelect = dragging ? 'none' : ''
@@ -122,10 +125,8 @@ export default function useDragAndDrop(pendingHistoryNodes) {
     const compLabel = moduleData.componentName
     const nodeType =
       moduleData.sourceFile === GHOST_MODULE_FILENAME
-        ? 'ghostNode'
+        ? GHOST_NODE_TYPE
         : 'moduleNode'
-    console.log('Module Data:', moduleData)
-    console.log('Dropping module:', finalName, 'of type:', nodeType)
     const filePart = moduleData.sourceFile
     const label = filePart ? `${compLabel} — ${filePart}` : compLabel
     pendingHistoryNodes.add(nodeId)
@@ -158,12 +159,19 @@ export default function useDragAndDrop(pendingHistoryNodes) {
     })
 
     addNodes(newNode)
+
+    if (nodeType === GHOST_NODE_TYPE) {
+      pendingGhostNodeId.value = newNode.id
+      isGhostSetupOpen.value = true
+    }
   }
 
   return {
     draggedType,
     isDragOver,
     isDragging,
+    isGhostSetupOpen,
+    pendingGhostNodeId,
     onDragStart,
     onDragLeave,
     onDragOver,

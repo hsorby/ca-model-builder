@@ -55,6 +55,12 @@
       </div>
     </template>
   </el-dialog>
+
+  <GhostSetupModal
+    v-if="isGhostSetupOpen"
+    @confirm="finalizeGhostNode"
+    @cancel="cancelGhostNode"
+  />
 </template>
 
 <script setup>
@@ -75,17 +81,32 @@ import WorkbenchArea from './WorkbenchArea.vue'
 import ModuleList from './ModuleList.vue'
 import ModuleNode from './ModuleNode.vue'
 import GhostNode from './GhostNode.vue'
+import GhostSetupModal from './GhostSetupDialog.vue'
 import { useBuilderStore } from '../stores/builderStore'
 import { useResizableAside } from '../composables/useResizableAside'
 import useDragAndDrop from '../composables/useDnD'
-import { edgeLineOptions, FLOW_IDS, GHOST_MODULE_DEFINITION, GHOST_MODULE_FILENAME } from '../utils/constants'
+import {
+  edgeLineOptions,
+  FLOW_IDS,
+  GHOST_MODULE_DEFINITION,
+  GHOST_MODULE_FILENAME,
+} from '../utils/constants'
 
-const { addEdges, edges, nodes, onConnect, onDragLeave, onNodeChange, onEdgeChange } = useVueFlow(
-  FLOW_IDS.MACRO
-) // Unique ID separates this from main canvas.
+const {
+  addEdges,
+  edges,
+  findNode,
+  nodes,
+  onConnect,
+  onDragLeave,
+  onNodeChange,
+  onEdgeChange,
+  removeNodes,
+} = useVueFlow(FLOW_IDS.MACRO) // Unique ID separates this from main canvas.
 
 const previousNodes = new Set()
-const { onDrop } = useDragAndDrop(previousNodes)
+const { onDrop, isGhostSetupOpen, pendingGhostNodeId } =
+  useDragAndDrop(previousNodes)
 
 const { width: asideWidth, startResize } = useResizableAside(200, 150, 400)
 const builderStore = useBuilderStore()
@@ -102,7 +123,6 @@ const emit = defineEmits(['update:modelValue', 'generate', 'edit-node'])
 
 const multiplier = ref(1)
 const nodeRefs = ref({})
-
 
 onConnect((connection) => {
   // Match what we specify in connectionLineOptions.
@@ -124,9 +144,15 @@ function onOpenEditDialog(eventPayload) {
 watch(
   () => props.modelValue,
   (newVal) => {
-    newVal ? builderStore.addModuleFile(GHOST_MODULE_DEFINITION) : builderStore.removeModuleFile(GHOST_MODULE_FILENAME)
+    newVal
+      ? builderStore.addModuleFile(GHOST_MODULE_DEFINITION)
+      : builderStore.removeModuleFile(GHOST_MODULE_FILENAME)
   }
 )
+
+watch(() => isGhostSetupOpen, (open) => {
+  console.log('Ghost Setup Open:', open)
+})
 
 function closeDialog() {
   emit('update:modelValue', false)
@@ -155,6 +181,33 @@ function generateMacro() {
 
   emit('generate', macroData)
   closeDialog()
+}
+
+const finalizeGhostNode = (selectedTargetNodeId) => {
+  const ghostNode = findNode(pendingGhostNodeId.value)
+
+  if (ghostNode) {
+    // 1. Update the ghost node with the user's choice
+    ghostNode.data = {
+      ...ghostNode.data,
+      targetNodeId: selectedTargetNodeId,
+    }
+  }
+
+  // 2. Close Modal
+  isGhostSetupOpen.value = false
+  pendingGhostNodeId.value = null
+}
+
+// --- Handle Modal Cancellation ---
+const cancelGhostNode = () => {
+  // If user cancels, we should remove the empty ghost node they just dropped
+  if (pendingGhostNodeId.value) {
+    removeNodes([pendingGhostNodeId.value])
+  }
+
+  isGhostSetupOpen.value = false
+  pendingGhostNodeId.value = null
 }
 </script>
 
