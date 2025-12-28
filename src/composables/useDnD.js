@@ -1,5 +1,7 @@
-import { useVueFlow } from "@vue-flow/core"
-import { ref, shallowRef, watch } from "vue"
+import { useVueFlow } from '@vue-flow/core'
+import { ref, shallowRef, watch } from 'vue'
+
+import { GHOST_MODULE_FILENAME } from '../utils/constants'
 
 /**
  * In a real world scenario you'd want to avoid creating refs in a global scope like this as they might not be cleaned up properly.
@@ -31,8 +33,8 @@ export default function useDragAndDrop(pendingHistoryNodes) {
     // Find the highest existing ID
     let maxId = -1
     allNodes.forEach((node) => {
-      if (node.id.startsWith("dndnode_")) {
-        const numPart = parseInt(node.id.split("_")[1], 10)
+      if (node.id.startsWith('dndnode_')) {
+        const numPart = parseInt(node.id.split('_')[1], 10)
         if (!isNaN(numPart) && numPart > maxId) {
           maxId = numPart
         }
@@ -44,19 +46,19 @@ export default function useDragAndDrop(pendingHistoryNodes) {
   }
 
   watch(isDragging, (dragging) => {
-    document.body.style.userSelect = dragging ? "none" : ""
+    document.body.style.userSelect = dragging ? 'none' : ''
   })
 
   function onDragStart(event, module) {
     if (event.dataTransfer) {
-      event.dataTransfer.setData("application/vueflow", module.name)
-      event.dataTransfer.effectAllowed = "move"
+      event.dataTransfer.setData('application/vueflow', module.name)
+      event.dataTransfer.effectAllowed = 'move'
     }
 
     draggedType.value = module
     isDragging.value = true
 
-    document.addEventListener("drop", onDragEnd)
+    document.addEventListener('drop', onDragEnd)
   }
 
   /**
@@ -71,7 +73,7 @@ export default function useDragAndDrop(pendingHistoryNodes) {
       isDragOver.value = true
 
       if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = "move"
+        event.dataTransfer.dropEffect = 'move'
       }
     }
   }
@@ -84,7 +86,7 @@ export default function useDragAndDrop(pendingHistoryNodes) {
     isDragging.value = false
     isDragOver.value = false
     draggedType.value = null
-    document.removeEventListener("drop", onDragEnd)
+    document.removeEventListener('drop', onDragEnd)
   }
 
   /**
@@ -117,14 +119,20 @@ export default function useDragAndDrop(pendingHistoryNodes) {
     }
 
     // Build a non-editable label that reflects the component and CellML source file.
-    const compLabel = moduleData.componentName 
-    const filePart = moduleData.sourceFile 
+    const compLabel = moduleData.componentName
+    const nodeType =
+      moduleData.sourceFile === GHOST_MODULE_FILENAME
+        ? 'ghostNode'
+        : 'moduleNode'
+    console.log('Module Data:', moduleData)
+    console.log('Dropping module:', finalName, 'of type:', nodeType)
+    const filePart = moduleData.sourceFile
     const label = filePart ? `${compLabel} — ${filePart}` : compLabel
     pendingHistoryNodes.add(nodeId)
 
     const newNode = {
       id: nodeId,
-      type: "moduleNode",
+      type: nodeType,
       position,
       data: {
         ...JSON.parse(JSON.stringify(moduleData)), // Keep deep copy

@@ -37,6 +37,9 @@
                 :ref="(el) => (nodeRefs[props.id] = el)"
               />
             </template>
+            <template #node-ghostNode="props">
+              <GhostNode :id="props.id" :data="props.data" />
+            </template>
             <WorkbenchArea />
           </VueFlow>
         </div>
@@ -55,7 +58,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { DCaret } from '@element-plus/icons-vue'
 import {
@@ -71,9 +74,11 @@ import {
 import WorkbenchArea from './WorkbenchArea.vue'
 import ModuleList from './ModuleList.vue'
 import ModuleNode from './ModuleNode.vue'
+import GhostNode from './GhostNode.vue'
+import { useBuilderStore } from '../stores/builderStore'
 import { useResizableAside } from '../composables/useResizableAside'
 import useDragAndDrop from '../composables/useDnD'
-import { edgeLineOptions, FLOW_IDS } from '../utils/constants'
+import { edgeLineOptions, FLOW_IDS, GHOST_MODULE_DEFINITION, GHOST_MODULE_FILENAME } from '../utils/constants'
 
 const { addEdges, edges, nodes, onConnect, onDragLeave, onNodeChange, onEdgeChange } = useVueFlow(
   FLOW_IDS.MACRO
@@ -83,6 +88,8 @@ const previousNodes = new Set()
 const { onDrop } = useDragAndDrop(previousNodes)
 
 const { width: asideWidth, startResize } = useResizableAside(200, 150, 400)
+const builderStore = useBuilderStore()
+
 const props = defineProps({
   // v-model for visibility
   modelValue: {
@@ -113,6 +120,13 @@ function onOpenEditDialog(eventPayload) {
     instanceId: FLOW_IDS.MACRO,
   })
 }
+
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    newVal ? builderStore.addModuleFile(GHOST_MODULE_DEFINITION) : builderStore.removeModuleFile(GHOST_MODULE_FILENAME)
+  }
+)
 
 function closeDialog() {
   emit('update:modelValue', false)
