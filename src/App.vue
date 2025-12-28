@@ -241,6 +241,7 @@ const {
   addNodes,
   applyNodeChanges,
   applyEdgeChanges,
+  dimensions,
   edges,
   findEdge,
   findNode,
@@ -708,11 +709,14 @@ async function onMacroBuilderGenerate(data) {
 
 function handleMacroGeneration(macroPayload) {
   // Insert at the center of the current view.
-  // We approximate the center by negating the viewport x/y.
-  const startX = -viewport.value.x / viewport.value.zoom + 100
-  const startY = -viewport.value.y / viewport.value.zoom + 100
+  const screenCenterX = dimensions.value.width / 2
+  const screenCenterY = dimensions.value.height / 2
 
-  processMacroGeneration(macroPayload, { x: startX, y: startY })
+  // We approximate the center by negating the viewport x/y.
+  const centerX = (screenCenterX - viewport.value.x) / viewport.value.zoom
+  const centerY = (screenCenterY - viewport.value.y) / viewport.value.zoom
+
+  processMacroGeneration(macroPayload, { x: centerX, y: centerY })
 }
 
 function onOpenReplacementDialog(eventPayload) {
