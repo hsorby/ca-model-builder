@@ -1,7 +1,5 @@
 import { useVueFlow } from '@vue-flow/core'
-import { FLOW_IDS } from '../../utils/constants'
-import { id, no } from 'element-plus/es/locales.mjs'
-import { dataType } from 'element-plus/es/components/table-v2/src/common.mjs'
+import { FLOW_IDS, GHOST_NODE_TYPE } from '../../utils/constants'
 
 // Helper to get the bounding width of the macro graph
 function getGraphWidth(nodes) {
@@ -50,8 +48,8 @@ export function useMacroGenerator() {
 
     if (sourceNodes.length === 0) return
 
-    const realNodes = sourceNodes.filter((n) => n.type !== 'ghost')
-    const ghostNodes = sourceNodes.filter((n) => n.type === 'ghost')
+    const realNodes = sourceNodes.filter((n) => n.type !== GHOST_NODE_TYPE)
+    const ghostNodes = sourceNodes.filter((n) => n.type === GHOST_NODE_TYPE)
 
     const MACRO_WIDTH = getGraphWidth(sourceNodes)
     const MARGIN_X = 100 // Gap between iterations
