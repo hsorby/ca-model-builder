@@ -2,6 +2,7 @@ import { useVueFlow } from '@vue-flow/core'
 import { ref, shallowRef, watch } from 'vue'
 
 import { GHOST_MODULE_FILENAME, GHOST_NODE_TYPE } from '../utils/constants'
+import { generateUniqueModuleName } from '../utils/nodes'
 
 /**
  * In a real world scenario you'd want to avoid creating refs in a global scope like this as they might not be cleaned up properly.
@@ -28,11 +29,10 @@ export default function useDragAndDrop(pendingHistoryNodes) {
   } = useVueFlow()
 
   function getId() {
-    const allNodes = getNodes.value
 
     // Find the highest existing ID
     let maxId = -1
-    allNodes.forEach((node) => {
+    getNodes.value.forEach((node) => {
       if (node.id.startsWith('dndnode_')) {
         const numPart = parseInt(node.id.split('_')[1], 10)
         if (!isNaN(numPart) && numPart > maxId) {
@@ -111,15 +111,7 @@ export default function useDragAndDrop(pendingHistoryNodes) {
       return
     }
 
-    const allNodes = getNodes.value
-    const existingNames = new Set(allNodes.map((node) => node.data.name))
-    let finalName = moduleData.name
-    let counter = 1
-
-    while (existingNames.has(finalName)) {
-      finalName = `${moduleData.name}_${counter}`
-      counter++
-    }
+    const finalName = generateUniqueModuleName(moduleData, getNodes.value)
 
     // Build a non-editable label that reflects the component and CellML source file.
     const compLabel = moduleData.componentName

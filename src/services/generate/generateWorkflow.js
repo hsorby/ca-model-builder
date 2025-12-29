@@ -1,5 +1,6 @@
 import { useVueFlow } from '@vue-flow/core'
 import { FLOW_IDS, GHOST_NODE_TYPE } from '../../utils/constants'
+import { generateUniqueModuleName } from '../../utils/nodes'
 
 // Helper to get the bounding width of the macro graph
 function getGraphWidth(nodes) {
@@ -43,6 +44,7 @@ export function useMacroGenerator() {
     insertPosition = { x: 0, y: 0 }
   ) => {
     const { flow, repeatCount } = macroData
+    console.log('Processing Macro Generation:', macroData)
     const sourceNodes = flow.nodes || []
     const sourceEdges = flow.edges || []
 
@@ -74,7 +76,9 @@ export function useMacroGenerator() {
     const newEdges = []
 
     const idSet = new Set() // To track unique IDs.
+    let namesList = []
     getNodes.value.forEach((node) => {
+      namesList.push({data: {name: node.data.name}})
       if (node.id.startsWith('macronode_')) {
         idSet.add(node.id)
       }
@@ -93,9 +97,15 @@ export function useMacroGenerator() {
         // Calculate shift.
         const xOffset = i * (MACRO_WIDTH + MARGIN_X)
 
+        const finalName = generateUniqueModuleName({name: node.data.componentName}, namesList)
+        namesList.push({data: {name: finalName}})
+
         newNodes.push({
           id: newId,
-          data: node.data,
+          data: {
+            ...node.data,
+            name: finalName
+          },
           type: node.type,
           position: {
             // Relocate relative to the insertion point.
