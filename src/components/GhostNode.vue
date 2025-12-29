@@ -13,7 +13,7 @@
 
     <template v-for="port in targetPorts" :key="port.uid" class="port">
       <Handle
-        :id="port.id"
+        :id="port.uid"
         :position="portPosition(port.side)"
         :style="getHandleStyle(port, targetPorts)"
         class="port-handle"
