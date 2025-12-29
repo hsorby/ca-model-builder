@@ -17,4 +17,4 @@ export const FLOW_IDS = {
 
 export const GHOST_NODE_TYPE = 'ghostNode'
 export const GHOST_MODULE_FILENAME = 'ghostModule.cellml'
-export const GHOST_MODULE_DEFINITION = { filename: GHOST_MODULE_FILENAME, modules: [{name: 'Ghost', sourceFile: GHOST_MODULE_FILENAME}] }
+export const GHOST_MODULE_DEFINITION = { filename: GHOST_MODULE_FILENAME, modules: [{name: 'Ghost', componentName: 'ghost', sourceFile: GHOST_MODULE_FILENAME}] }

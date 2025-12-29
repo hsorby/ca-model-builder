@@ -18,7 +18,7 @@
       <el-option
         v-for="node in availableNodes"
         :key="node.id"
-        :label="`${node.data.label || node.id}`"
+        :label="`${node.data.name || node.data.label || node.id}`"
         :value="node.id"
       />
     </el-select>

@@ -150,10 +150,6 @@ watch(
   }
 )
 
-watch(() => isGhostSetupOpen, (open) => {
-  console.log('Ghost Setup Open:', open)
-})
-
 function closeDialog() {
   emit('update:modelValue', false)
 }
