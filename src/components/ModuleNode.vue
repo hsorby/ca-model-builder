@@ -232,7 +232,6 @@ const addPort = async (portToAdd) => {
     uid: crypto.randomUUID(),
   }
 
-  console.log('Adding port:', newPort)
   // Create a new array with the old ports + the new one
   const newPorts = [...props.data.ports, newPort]
 

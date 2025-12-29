@@ -83,7 +83,6 @@ export function runFcoseLayout(nodes, edges) {
       x: x - w / 2,
       y: y - h / 2,
     }
-    console.log('Node', node.id, 'info', node)
 
     // Port Sorting.
     // Physics layouts put nodes anywhere (top, bottom, left, right).

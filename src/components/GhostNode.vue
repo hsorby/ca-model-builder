@@ -3,7 +3,7 @@
     <el-card class="ghost-card" shadow="hover" style="height: 100%; box-sizing: border-box;">
       <div class="module-name">
         <span class="ghost-icon">👻</span>
-        <span class="label"
+        <span class="label truncate"
           >Next: {{ targetNode?.data?.name || 'Unknown' }}</span
         >
       </div>
@@ -36,12 +36,6 @@ const targetNode = computed(() => {
 })
 
 const targetPorts = computed(() => {
-  console.log(
-    'GhostNode Target Ports for Node ID:',
-    props.id,
-    'Target Node:',
-    targetNode.value
-  )
   return targetNode.value?.data?.ports || []
 })
 
@@ -68,10 +62,19 @@ const nodeStyle = computed(() => {
   background: rgba(255, 255, 255, 0.5);
   opacity: 0.8;
   border-radius: 8px;
+  overflow: hidden;
 }
 .ghost-icon {
   font-size: 1.5em;
   margin-right: 5px;
+}
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  max-width: 90%; /* Prevent text from breaking the layout */
+  vertical-align: middle;
 }
 </style>
 
