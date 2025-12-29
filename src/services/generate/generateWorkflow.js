@@ -76,9 +76,9 @@ export function useMacroGenerator() {
     const newEdges = []
 
     const idSet = new Set() // To track unique IDs.
-    let namesList = []
+    const namesSet = new Set()
     getNodes.value.forEach((node) => {
-      namesList.push({data: {name: node.data.name}})
+      namesSet.add(node.data.name)
       if (node.id.startsWith('macronode_')) {
         idSet.add(node.id)
       }
@@ -97,8 +97,8 @@ export function useMacroGenerator() {
         // Calculate shift.
         const xOffset = i * (MACRO_WIDTH + MARGIN_X)
 
-        const finalName = generateUniqueModuleName({name: node.data.componentName}, namesList)
-        namesList.push({data: {name: finalName}})
+        const finalName = generateUniqueModuleName({name: node.data.componentName}, namesSet)
+        namesSet.add(finalName)
 
         newNodes.push({
           id: newId,

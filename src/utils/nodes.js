@@ -1,5 +1,4 @@
-export function generateUniqueModuleName(moduleData, allNodes) {
-const existingNames = new Set(allNodes.map((node) => node.data.name))
+export function generateUniqueModuleName(moduleData, existingNames) {
     let finalName = moduleData.name
     let counter = 1
 

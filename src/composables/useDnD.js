@@ -111,7 +111,8 @@ export default function useDragAndDrop(pendingHistoryNodes) {
       return
     }
 
-    const finalName = generateUniqueModuleName(moduleData, getNodes.value)
+    const existingNames = new Set(getNodes.value.map((node) => node.data.name))
+    const finalName = generateUniqueModuleName(moduleData, existingNames)
 
     // Build a non-editable label that reflects the component and CellML source file.
     const compLabel = moduleData.componentName
