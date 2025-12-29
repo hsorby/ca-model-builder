@@ -23,8 +23,8 @@
             @dragleave="onDragLeave"
             @nodes-change="onNodeChange"
             @edges-change="onEdgeChange"
-            :default-edge-options="edgeLineOptions"
-            :connection-line-options="edgeLineOptions"
+            :default-edge-options="macroEdgeOptions"
+            :connection-line-options="macroEdgeOptions"
             :nodes="nodes"
             :delete-key-code="['Backspace', 'Delete']"
           >
@@ -90,6 +90,7 @@ import {
   FLOW_IDS,
   GHOST_MODULE_DEFINITION,
   GHOST_MODULE_FILENAME,
+  markerEnd,
 } from '../utils/constants'
 
 const {
@@ -124,11 +125,19 @@ const emit = defineEmits(['update:modelValue', 'generate', 'edit-node'])
 const multiplier = ref(1)
 const nodeRefs = ref({})
 
+const macroEdgeOptions = {
+  ...edgeLineOptions,
+  markerEnd: {
+    type: markerEnd, // Keep the same look
+    id: 'macro-builder-arrow',    // <--- UNIQUE ID IS THE KEY
+  }
+}
+
 onConnect((connection) => {
   // Match what we specify in connectionLineOptions.
   const newEdge = {
     ...connection,
-    ...edgeLineOptions,
+    ...macroEdgeOptions,
   }
 
   addEdges(newEdge)

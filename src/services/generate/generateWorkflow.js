@@ -56,14 +56,14 @@ export function useMacroGenerator() {
 
     // We prepare arrays to batch-add everything at the end for performance
     const internalEdges = []
-    const chainingEdges = [] // Edges connected to a ghost
+    const chainingEdges = [] // Edges connected to a ghost.
 
     sourceEdges.forEach((edge) => {
       const isTargetGhost = ghostNodes.find((g) => g.id === edge.target)
       if (isTargetGhost) {
         chainingEdges.push({
           ...edge,
-          targetGhostId: edge.target, // Keep track of which ghost it hit
+          targetGhostId: edge.target, // Keep track of which ghost it hit.
         })
       } else {
         internalEdges.push(edge)
@@ -73,7 +73,7 @@ export function useMacroGenerator() {
     const newNodes = []
     const newEdges = []
 
-    const idSet = new Set() // To track unique IDs
+    const idSet = new Set() // To track unique IDs.
     getNodes.value.forEach((node) => {
       if (node.id.startsWith('macronode_')) {
         idSet.add(node.id)
@@ -82,15 +82,15 @@ export function useMacroGenerator() {
 
     const createdInstances = []
     for (let i = 0; i < repeatCount; i++) {
-      const idMap = new Map() // Maps "Old ID" -> "New Unique ID" for this iteration
+      const idMap = new Map() // Maps "Old ID" -> "New Unique ID" for this iteration.
 
-      // 1. Process Nodes
+      // Process nodes.
       realNodes.forEach((node) => {
         // Generate a unique ID.
         const newId = getId(i, idSet)
         idMap.set(node.id, newId)
 
-        // Calculate Shift
+        // Calculate shift.
         const xOffset = i * (MACRO_WIDTH + MARGIN_X)
 
         newNodes.push({
@@ -98,7 +98,7 @@ export function useMacroGenerator() {
           data: node.data,
           type: node.type,
           position: {
-            // Relocate relative to the insertion point
+            // Relocate relative to the insertion point.
             x:
               insertPosition.x +
               node.position.x +
@@ -116,7 +116,7 @@ export function useMacroGenerator() {
         const newSource = idMap.get(edge.source)
         const newTarget = idMap.get(edge.target)
 
-        // Only add edge if both source/target exist in this iteration
+        // Only add edge if both source/target exist in this iteration.
         if (newSource && newTarget) {
           newEdges.push({
             ...edge,
@@ -132,15 +132,15 @@ export function useMacroGenerator() {
         const currentInstanceMap = createdInstances[i]
 
         chainingEdges.forEach((chainEdge) => {
-          // 1. Find the Ghost Node this edge was pointing to
+          // Find the Ghost Node this edge was pointing to.
           const ghostNode = ghostNodes.find(
             (g) => g.id === chainEdge.targetGhostId
           )
 
-          // 2. Find who the Ghost was mimicking (e.g., Node A)
+          // Find who the Ghost was mimicking (e.g., Node A).
           const originalTargetId = ghostNode.data.targetNodeId
 
-          // 3. Connect:
+          // Connect:
           // Source: The node from Previous Iteration
           // Target: The node from Current Iteration (the one the Ghost mimicked)
           newEdges.push({
@@ -154,7 +154,7 @@ export function useMacroGenerator() {
       }
     }
 
-    // 3. Batch Add to Main Flow
+    // Batch add nodes and edges to the Main Flow.
     addNodes(newNodes)
     addEdges(newEdges)
   }

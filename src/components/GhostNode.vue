@@ -13,7 +13,7 @@
 
     <template v-for="port in targetPorts" :key="port.uid" class="port">
       <Handle
-        :id="port.uid"
+        :id="getHandleId(port)"
         :position="portPosition(port.side)"
         :style="getHandleStyle(port, targetPorts)"
         class="port-handle"
@@ -25,7 +25,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useVueFlow, Handle } from '@vue-flow/core'
-import { getHandleStyle, portPosition } from '../utils/ports'
+import { getHandleId, getHandleStyle, portPosition } from '../utils/ports'
 
 const props = defineProps(['id', 'data'])
 const { findNode } = useVueFlow()
