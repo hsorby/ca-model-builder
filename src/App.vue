@@ -1,7 +1,7 @@
 <template>
   <div class="app-layout">
     <header class="global-nav">
-      <div class="brand">Model Builder v1.0</div>
+      <div class="brand">Model Builder v{{ appVersion }}</div>
       <nav>
         <router-link to="/">Workbench</router-link>
         <router-link to="/docs">Documentation</router-link>
@@ -14,6 +14,10 @@
     </div>
   </div>
 </template>
+
+<script setup>
+const appVersion = __APP_VERSION__
+</script>
 
 <style>
 /* Reset body margin */

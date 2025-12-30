@@ -6,7 +6,7 @@
     "email": "h.sorby@auckland.ac.nz"
   },
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "main": "src/electron/main.js",
   "scripts": {
