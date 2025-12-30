@@ -1,10 +1,15 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import Markdown from 'unplugin-vue-markdown/vite'
-import LinkAttributes from 'markdown-it-link-attributes' // (Optional, commonly used)
-import MarkdownItAttrs from 'markdown-it-attrs'
 import path from 'path'
+import Markdown from 'unplugin-vue-markdown/vite'
+import LinkAttributes from 'markdown-it-link-attributes'
+import MarkdownItAttrs from 'markdown-it-attrs'
+import MarkdownItGitHubAlerts from 'markdown-it-github-alerts'
 import packageJson from './package.json'
+
+import 'markdown-it-github-alerts/styles/github-colors-light.css'
+import 'markdown-it-github-alerts/styles/github-colors-dark-class.css'
+import 'markdown-it-github-alerts/styles/github-base.css'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -34,7 +39,8 @@ export default defineConfig({
             target: '_blank',
             rel: 'noopener',
           },
-        })  
+        })
+        md.use(MarkdownItGitHubAlerts)
       },
       markdownItOptions: {
         html: true,

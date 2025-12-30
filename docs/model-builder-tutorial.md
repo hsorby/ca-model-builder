@@ -5,7 +5,7 @@ This tutorial builds on the introduction provided in [CA model builder introduct
 Before starting the tutorial, please ensure you have cloned the repository and installed the necessary dependencies as outlined in the [README ](../README.rst).
 Start the application by navigating the ca-model-builder directory in your terminal and running the command
 
-```
+```bash
 yarn dev
 ```
 
@@ -35,26 +35,17 @@ When satisified with the name, press Enter or click outside the text box to save
 
 Drag and drop the "simple_lumen", "simple_membrane", "ENaC", and "simple_cell" modules from the Module List into the workspace area.
 
-> **image:** assets/images/modules-placed-no-name.png
-   :alt: Modules placed in workspace area
-   :width: 600px
-   :align: center
+![Modules placed in workspace area](./assets/images/modules-placed-no-name.png){.align-center width="600px"}
 
 Rename the modules to "Lumen", "Membrane", and "Cell", respectively.
 Leave the ENaC module name unchanged.
 The workspace should now look similar to the following image:
 
-> **image:** assets/images/modules-placed-renamed.png
-   :alt: Modules placed in workspace area
-   :width: 600px
-   :align: center
+![Modules placed in workspace area](./assets/images/modules-placed-renamed.png){.align-center width="600px"}
 
-.. note
-
-```
-  The colour of modules can be changed at anytime using the key icon on each module node.
-  This is purely for visual identification and has no effect on the exported model.
-```
+> [!NOTE]
+>  The colour of modules can be changed at anytime using the key icon on each module node.
+>  This is purely for visual identification and has no effect on the exported model.
 
 ## Step 3: Create Ports Nodes
 
@@ -63,17 +54,11 @@ This can be done by clicking the pin icon on the module node, which will allow t
 
 Add port nodes to the module nodes as in the following image:
 
-> **image:** assets/images/modules-port-nodes.png
-   :alt: Modules with port nodes added
-   :width: 600px
-   :align: center
+![Modules with port nodes added](./assets/images/modules-port-nodes.png){.align-center width="600px"}
 
-.. note
-
-```
-  Port nodes can be added to the top, left, right, or bottom of the module node by clicking the corresponding area around the pin icon.
-  Port nodes can be deleted by hovering over with the cursor and clicking the "trash" icon that appears.
-```
+> [!NOTE]
+>  Port nodes can be added to the top, left, right, or bottom of the module node by clicking the corresponding area around the pin icon.
+>  Port nodes can be deleted by hovering over with the cursor and clicking the "trash" icon that appears.
 
 ## Step 4: Connect Ports Nodes to Indicate Shared Variables
 
@@ -82,16 +67,10 @@ This will create an arrow indicating that the two modules share a variable.
 
 Connect the port nodes as shown in the following image:
 
-> **image:** assets/images/modules-connected.png
-   :alt: Modules with connected ports
-   :width: 600px
-   :align: center
+![Modules with connected ports](./assets/images/modules-connected.png){.align-center width="600px"}
 
-.. note
-
-```
-  In this example, each arrow has its own port, but multiple arrows can leave or enter a single port node.
-```
+> [!NOTE]
+>  In this example, each arrow has its own port, but multiple arrows can leave or enter a single port node.
 
 ## Step 5: Define Ports on each Module
 
@@ -102,37 +81,22 @@ Define the ports as shown in the following images:
 
 ###### Lumen
 
-> **image:** assets/images/ports-lumen.png
-   :alt: Defining ports for Lumen module
-   :width: 600px
-   :align: center
+![Defining ports for Lumen module](./assets/images/ports-lumen.png){.align-center width="600px"}
 
 ###### Membrane
 
-> **image:** assets/images/ports-membrane.png
-   :alt: Defining ports for membrane module
-   :width: 600px
-   :align: center
+![Defining ports for membrane module](./assets/images/ports-membrane.png){.align-center width="600px"}
 
 ###### ENaC
 
-> **image:** assets/images/ports-ENaC.png
-   :alt: Defining ports for ENaC module
-   :width: 600px
-   :align: center
+![Defining ports for ENaC module](./assets/images/ports-ENaC.png){.align-center width="600px"}
 
 ###### Cell
 
-> **image:** assets/images/ports-Cell.png
-   :alt: Defining ports for Cell module
-   :width: 600px
-   :align: center
+![Defining ports for Cell module](./assets/images/ports-Cell.png){.align-center width="600px"}
 
-.. note
-
-```
-Port names can be thought of as a mapping between the variable name in a given CellML module and the shared variable name used in Circulatory Autogen.
-```
+> [!NOTE]
+> Port names can be thought of as a mapping between the variable name in a given CellML module and the shared variable name used in Circulatory Autogen.
 
 ## Step 6: Import Parameter File
 
@@ -142,12 +106,9 @@ A file dialog will appear, allowing users to select the parameter CSV file from 
 
 For the purposes of this tutorial, the parameters file colon_FTU_parameters.csv has already been imported into CAMB.
 
-.. note
-
-```
-Parameter names in the parameter file must follow the naming convention required by Circulatory Autogen ([module_name]_[parameter_name] for constants and [parameter_name] for global_constants).
-It is essential that these exactly match parameter and module names in CAMB.
-```
+> [!NOTE]
+> Parameter names in the parameter file must follow the naming convention required by Circulatory Autogen ([module_name]_[parameter_name] for constants and > [parameter_name] for global_constants).
+> It is essential that these exactly match parameter and module names in CAMB.
 
 ## Step 7: Export Model Workspace
 
@@ -162,4 +123,6 @@ This will download a JSON file representing the current state of the workspace, 
 To load a previously saved workspace, click the "Load Model" button and select the JSON file from your local filesystem.
 The workspace will be restored to the state it was in when it was saved.
 
+```bash
 yarn dev
+```

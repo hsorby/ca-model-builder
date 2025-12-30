@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import BuilderView from '../views/BuilderView.vue'
 import AboutView from '../views/AboutView.vue'
-import DocsView from '../views/DocsView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 
 const router = createRouter({
@@ -10,24 +9,28 @@ const router = createRouter({
     {
       path: '/',
       name: 'builder',
-      component: BuilderView
+      component: BuilderView,
     },
     {
       path: '/about',
       name: 'about',
-      component: AboutView
+      component: AboutView,
     },
     {
-      path: '/docs',
+      path: '/docs/',
+      redirect: '/docs/ca-model-builder-introduction',
+    },
+    {
+      path: '/docs/:slug?',
       name: 'docs',
-      component: DocsView
+      component: () => import('../views/DocsView.vue'),
     },
     {
       path: '/:pathMatch(.*)',
       name: 'not-found',
-      component: NotFoundView
-    }
-  ]
+      component: NotFoundView,
+    },
+  ],
 })
 
 export default router

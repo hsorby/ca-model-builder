@@ -10,13 +10,9 @@ When generating coupled models using Circulatory Autogen, users need to provide 
 
 The intention underlying CAMB was to simplify the process of creating these configuration files by providing an intuitive visual interface.
 
-.. note
-
-```
-
-As things stand, CAMB uses general ports only.
-Support for more complex port types will be added in the future.
-```
+> [!NOTE]
+> As things stand, CAMB uses general ports only.
+> Support for more complex port types will be added in the future.
 
 ## User Interface
 
@@ -24,10 +20,7 @@ Support for more complex port types will be added in the future.
 The CAMB user interface is designed to be intuitive and user-friendly.
 The main components of the interface are highlighted in the image below:
 
-> **image:** assets/images/CA-model-builder_UI.png
-   :alt: CA Model Builder User Interface with workspace and module list highlighted
-   :width: 800px
-   :align: center
+![CA Model Builder User Interface with workspace and module list highlighted](./assets/images/CA-model-builder_UI.png){.align-center width="600px"}
 
 - Module List: (Left-hand side) Collapsible list of available CellML modules that can be dragged and dropped into the workspace area.
 - Workspace Area: The main area for users to place modules, draw connections, and edit ports (shared variables)
@@ -43,47 +36,31 @@ The module node displays an editable module name (equivalent to the vessel_name 
 Users can drag and drop these nodes onto the workspace area from the module list.
 Each module node contains three icons that enable users to edit the colour (key), add port nodes, and edit the module.
 
-> **image:** assets/images/module-elements.png
-   :alt: Labelled module node
-   :width: 800px
-   :align: center
+![Labelled module node](./assets/images/module-elements.png){.align-center width="600px"}
 
 ###### Key
 
 The key icon on each module node allows users to assign a colour to the module for visual identification.
 Clicking the key icon opens a colour selection menu with preset colours and labels.
 
-> **image:** assets/images/Key.png
-   :alt: Expanded Key menu
-   :width: 800px
-   :align: center
+![Expanded Key menu](./assets/images/Key.png){.align-center width="600px"}
 
 ###### Add Port Node
 
 The pin icon on each module node allows users to add port nodes, which are nodes that enable users to draw arrows between modules to indicate the existence of shared parameters.
 Clicking the pin icon adds a new port node to the module either on the top, left, right, or bottom of the selected module node.
 
-> **image:** assets/images/Add-port-node.png
-   :alt: Expanded Add Port Node menu
-   :width: 800px
-   :align: center
+![Expanded Add Port Node menu](./assets/images/Add-port-node.png){.align-center width="600px"}
 
 ###### Edit Module
 
 The pencil icon on each module node opens a dialogue that allows users to edit the module name and create ports by selecting variables from the CellML module.
 Port names are manually editable and variables are selectable from a dropdown list populated with variables from the CellML module.
 
-> **image:** assets/images/Edit-module-detail.png
-   :alt: Expanded Add Port Node menu
-   :width: 800px
-   :align: center
+![Expanded Add Port Node menu](./assets/images/Edit-module-detail.png){.align-center width="600px"}
 
-.. note
-
-```
-
-Module name (vessel_name) can also be edited by double-clicking while in the Workspace Area view.
-```
+> [!NOTE]
+> Module name (vessel_name) can also be edited by double-clicking while in the Workspace Area view.
 
 ###### Selecting Multiple Modules
 

@@ -2623,6 +2623,11 @@ markdown-it-attrs@^4.3.1:
   resolved "https://registry.yarnpkg.com/markdown-it-attrs/-/markdown-it-attrs-4.3.1.tgz#1e1f9bd2c87276d8f4ed74ad4268df428b7deee6"
   integrity sha512-/ko6cba+H6gdZ0DOw7BbNMZtfuJTRp9g/IrGIuz8lYc/EfnmWRpaR3CFPnNbVz0LDvF8Gf1hFGPqrQqq7De0rg==
 
+markdown-it-github-alerts@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/markdown-it-github-alerts/-/markdown-it-github-alerts-1.0.0.tgz#266683fda3fef2d0707eb69c5dd3fa4cf0e4386b"
+  integrity sha512-RU3cbB/ewujrDpYNdyabvp4CscZ5J/3D71NWbJW+JSA0nplfutIXDMCwtGWlMLwzgBDAYkFMvYGkigq8nWOVdA==
+
 markdown-it-link-attributes@^4.0.1:
   version "4.0.1"
   resolved "https://registry.yarnpkg.com/markdown-it-link-attributes/-/markdown-it-link-attributes-4.0.1.tgz#25751f2cf74fd91f0a35ba7b3247fa45f2056d88"
