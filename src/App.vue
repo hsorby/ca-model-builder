@@ -45,11 +45,13 @@ body {
   text-decoration: none;
   margin-left: 20px;
   font-size: 0.9rem;
+  cursor: pointer;
 }
 
 .global-nav nav a.router-link-active {
   color: #409eff;
-  font-weight: bold;
+  pointer-events: none;
+  cursor: default;
 }
 
 .view-container {
