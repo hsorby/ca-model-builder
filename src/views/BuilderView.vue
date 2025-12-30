@@ -201,6 +201,15 @@
   />
 </template>
 
+<script>
+// This is a separate script block just for naming the component.
+// This is to help when building a production build with minification
+// for the Keep-Alive functionality.
+export default {
+  name: 'BuilderView'
+}
+</script>
+
 <script setup>
 import { computed, inject, nextTick, onMounted, ref } from 'vue'
 import { ElNotification } from 'element-plus'
