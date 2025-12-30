@@ -10,6 +10,7 @@ import '@vue-flow/minimap/dist/style.css'
 import '@vue-flow/node-resizer/dist/style.css'
 import '@vue-flow/controls/dist/style.css'
 import "./assets/main.css"
+import router from "./router"
 
 import App from "./App.vue"
 
@@ -17,6 +18,7 @@ const app = createApp(App)
 const pinia = createPinia() // Create Pinia instance
 
 app.use(pinia) // Use Pinia
+app.use(router)
 app.use(ElementPlus)
 app.use(libcellmlPlugin)
 app.mount("#app")

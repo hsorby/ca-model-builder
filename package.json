@@ -46,6 +46,7 @@
     "pinia": "^3.0.3",
     "sass-embedded": "^1.97.1",
     "vue": "^3.5.22",
+    "vue-router": "^4.6.4",
     "vue3-libcellml.js": "^0.5.1"
   },
   "devDependencies": {

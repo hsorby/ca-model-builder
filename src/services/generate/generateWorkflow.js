@@ -44,7 +44,6 @@ export function useMacroGenerator() {
     insertPosition = { x: 0, y: 0 }
   ) => {
     const { flow, repeatCount } = macroData
-    console.log('Processing Macro Generation:', macroData)
     const sourceNodes = flow.nodes || []
     const sourceEdges = flow.edges || []
 
