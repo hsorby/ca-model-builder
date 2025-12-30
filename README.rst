@@ -1,6 +1,6 @@
-===================================
+=================================
 Circulatory Autogen Model Builder
-===================================
+=================================
 
 "Circulatory Autogen Model Builder" (CA System Builder) is a desktop application for visually constructing and configuring circulatory autogen system models.
 

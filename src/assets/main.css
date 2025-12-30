@@ -71,3 +71,8 @@
   color: #434344; /* Element Plus secondary text color */
   z-index: 10;
 }
+
+.align-center {
+  display: block;
+  margin: 0 auto;
+}

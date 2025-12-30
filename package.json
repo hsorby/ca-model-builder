@@ -40,6 +40,7 @@
     "cytoscape-fcose": "^2.2.0",
     "element-plus": "^2.11.5",
     "elkjs": "^0.11.0",
+    "github-markdown-css": "^5.8.1",
     "html-to-image": "^1.11.13",
     "jszip": "^3.10.1",
     "papaparse": "^5.5.3",
@@ -53,6 +54,9 @@
     "@vitejs/plugin-vue": "^6.0.1",
     "electron": "^39.0.0",
     "electron-builder": "^26.0.12",
+    "markdown-it-attrs": "^4.3.1",
+    "markdown-it-link-attributes": "^4.0.1",
+    "unplugin-vue-markdown": "^29.2.0",
     "vite": "^7.1.7",
     "vite-plugin-electron": "^0.29.0"
   }

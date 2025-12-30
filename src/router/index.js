@@ -23,7 +23,7 @@ const router = createRouter({
       component: DocsView
     },
     {
-      path: '/:pathMatch(.*)*',
+      path: '/:pathMatch(.*)',
       name: 'not-found',
       component: NotFoundView
     }
