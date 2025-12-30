@@ -1,7 +1,7 @@
 <template>
   <div class="app-layout">
     <header class="global-nav">
-      <div class="brand">Model Builder v{{ appVersion }}</div>
+      <div class="brand">Circulatory Autogen Model Builder v{{ appVersion }}</div>
       <nav>
         <router-link to="/">Workbench</router-link>
         <router-link to="/docs">Documentation</router-link>
