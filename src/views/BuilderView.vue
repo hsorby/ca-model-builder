@@ -1,5 +1,7 @@
 <template>
-  <el-container style="height: 100%; display: flex; flex-direction: column; flex-grow: 1;">
+  <el-container
+    style="height: 100%; display: flex; flex-direction: column; flex-grow: 1"
+  >
     <el-header class="app-header">
       <div class="file-uploads">
         <div class="file-io-buttons">
@@ -900,19 +902,21 @@ onMounted(async () => {
   // only when running 'yarn dev'
   if (import.meta.env.DEV) {
     await libcellmlReadyPromise
-    handleParametersFile({ raw: testParamertersCSV })
-    const result = processModuleData(
-      libcellml,
-      testData.content,
-      testData.filename
-    )
-    if (result.type !== 'success') {
-      throw new Error('Failed to process test parameters file.')
-    } else {
-      builderStore.addModuleFile({
-        filename: testData.filename,
-        modules: result.data,
-      })
+    if (!builderStore.hasModuleFile(testData.filename)) {
+      handleParametersFile({ raw: testParamertersCSV })
+      const result = processModuleData(
+        libcellml,
+        testData.content,
+        testData.filename
+      )
+      if (result.type !== 'success') {
+        throw new Error('Failed to process test parameters file.')
+      } else {
+        builderStore.addModuleFile({
+          filename: testData.filename,
+          modules: result.data,
+        })
+      }
     }
   }
 })

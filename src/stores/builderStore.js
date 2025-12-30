@@ -81,6 +81,15 @@ export const useBuilderStore = defineStore("builder", () => {
   }
 
   /**
+   * Checks if a module file is already loaded.
+   * @param {string} filename - The name of the file to check.
+   * @returns {boolean} - True if the file is loaded, false otherwise.
+   */
+  function hasModuleFile(filename) {
+    return this.availableModules.some((f) => f.filename === filename)
+  }
+
+  /**
    * Called when a module is dropped onto the workbench.
    * @param {string} moduleName - The name of the module to add.
    * @param {object} position - { x, y } coordinates from the drop event.
@@ -131,6 +140,7 @@ export const useBuilderStore = defineStore("builder", () => {
     // Actions
     addModuleFile,
     addModuleToWorkbench,
+    hasModuleFile,
     moveModule,
     removeModuleFile,
     setAvailableModules,
