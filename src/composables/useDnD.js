@@ -2,7 +2,7 @@ import { useVueFlow } from '@vue-flow/core'
 import { ref, shallowRef, watch } from 'vue'
 
 import { GHOST_MODULE_FILENAME, GHOST_NODE_TYPE } from '../utils/constants'
-import { generateUniqueModuleName } from '../utils/nodes'
+import { getId, generateUniqueModuleName } from '../utils/nodes'
 
 /**
  * In a real world scenario you'd want to avoid creating refs in a global scope like this as they might not be cleaned up properly.
@@ -27,23 +27,6 @@ export default function useDragAndDrop(pendingHistoryNodes) {
     screenToFlowCoordinate,
     updateNode,
   } = useVueFlow()
-
-  function getId() {
-
-    // Find the highest existing ID
-    let maxId = -1
-    getNodes.value.forEach((node) => {
-      if (node.id.startsWith('dndnode_')) {
-        const numPart = parseInt(node.id.split('_')[1], 10)
-        if (!isNaN(numPart) && numPart > maxId) {
-          maxId = numPart
-        }
-      }
-    })
-
-    // Return the next ID in the sequence
-    return `dndnode_${maxId + 1}`
-  }
 
   const isGhostSetupOpen = ref(false)
   const pendingGhostNodeId = ref(null)
@@ -103,7 +86,7 @@ export default function useDragAndDrop(pendingHistoryNodes) {
       y: event.clientY,
     })
 
-    const nodeId = getId()
+    const nodeId = getId(getNodes.value.map((n) => n.id))
 
     const moduleData = draggedType.value
 

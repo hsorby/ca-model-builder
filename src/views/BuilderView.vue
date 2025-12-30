@@ -206,12 +206,12 @@
 // This is to help when building a production build with minification
 // for the Keep-Alive functionality.
 export default {
-  name: 'BuilderView'
+  name: 'BuilderView',
 }
 </script>
 
 <script setup>
-import { computed, inject, nextTick, onMounted, ref } from 'vue'
+import { computed, inject, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { ElNotification } from 'element-plus'
 import { useVueFlow, VueFlow } from '@vue-flow/core'
 import { DCaret, CameraFilled } from '@element-plus/icons-vue'
@@ -239,6 +239,11 @@ import { useMacroGenerator } from '../services/generate/generateWorkflow'
 import { getHelperLines } from '../utils/helperLines'
 import { processModuleData } from '../utils/cellml'
 import { edgeLineOptions, FLOW_IDS } from '../utils/constants'
+import {
+  getId as getNextNodeId,
+  generateUniqueModuleName,
+} from '../utils/nodes'
+import { getId as getNextEdgeId } from '../utils/edges'
 
 import testModuleBGContent from '../assets/bg_modules.cellml?raw'
 import testModuleColonContent from '../assets/colon_FTU_modules.cellml?raw'
@@ -255,10 +260,13 @@ const {
   findEdge,
   findNode,
   fromObject,
+  getSelectedNodes,
+  getSelectedEdges,
   nodes,
   onConnect,
   removeEdges,
   removeNodes,
+  screenToFlowCoordinate,
   setViewport,
   toObject,
   updateNodeData,
@@ -304,6 +312,9 @@ const currentEditingNode = ref({
 
 const activeInteractionBuffer = new Map()
 const undoRedoSelection = false
+
+const clipboard = ref({ nodes: [], edges: [] })
+const mousePosition = ref({ x: 0, y: 0 })
 
 const allNodeNames = computed(() => nodes.value.map((n) => n.data.name))
 
@@ -905,8 +916,157 @@ function doPngScreenshot() {
   capture(vueFlowRef.value, { shouldDownload: true })
 }
 
+const getBoundingCenter = (nodes) => {
+  if (nodes.length === 0) return { x: 0, y: 0 }
+  
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+
+  nodes.forEach(n => {
+    const pos = { x: n.position.x + n.dimensions.width / 2, y: n.position.y + n.dimensions.height / 2 }
+    if (pos.x < minX) minX = pos.x
+    if (pos.y < minY) minY = pos.y
+    if (pos.x > maxX) maxX = pos.x
+    if (pos.y > maxY) maxY = pos.y
+  })
+
+  return {
+    x: minX + (maxX - minX) / 2,
+    y: minY + (maxY - minY) / 2
+  }
+}
+
+const copySelection = () => {
+  const nodes = getSelectedNodes.value
+  const edges = getSelectedEdges.value
+
+  if (nodes.length === 0) return
+
+  // Create a deep copy to avoid reference issues
+  clipboard.value = {
+    nodes: JSON.parse(JSON.stringify(nodes)),
+    edges: JSON.parse(JSON.stringify(edges)),
+  }
+}
+
+const pasteSelection = (atMouse = false) => {
+  if (clipboard.value.nodes.length === 0) return
+
+  const newNodes = []
+  const newEdges = []
+
+  let dx = 50
+  let dy = 50
+
+  if (atMouse) {
+    // Convert screen mouse pixels to graph coordinates (handling zoom/pan)
+    const mouseFlowPos = screenToFlowCoordinate(mousePosition.value)
+    
+    // Find the center of the nodes currently in the clipboard
+    const clipboardCenter = getBoundingCenter(clipboard.value.nodes)
+    
+    // Calculate difference to move center -> mouse
+    dx = mouseFlowPos.x - clipboardCenter.x
+    dy = mouseFlowPos.y - clipboardCenter.y
+  }
+
+  // Create a mapping of Old ID -> New ID.
+  const idMap = {}
+  const nodeIdSet = nodes.value.map((n) => n.id)
+  const edgeIdSet = edges.value.map((e) => e.id)
+  const namesSet = new Set()
+  allNodeNames.value.forEach((name) => {
+    namesSet.add(name)
+  })
+
+  clipboard.value.nodes.forEach((node) => {
+    const newId = getNextNodeId(nodeIdSet)
+    idMap[node.id] = newId
+    nodeIdSet.push(newId)
+
+    const finalName = generateUniqueModuleName(
+      { name: node.data.componentName },
+      namesSet
+    )
+    namesSet.add(finalName)
+
+    // Create the new node with offset position.
+    newNodes.push({
+      id: newId,
+      type: node.type,
+      data: {
+        ...node.data,
+        name: finalName,
+      },
+      position: {
+        x: node.position.x + dx,
+        y: node.position.y + dy,
+      },
+      // Reset selection state so we focus on the new copy.
+      selected: true,
+    })
+  })
+
+  // Only copy edges if BOTH source and target are in the copied set.
+  clipboard.value.edges.forEach((edge) => {
+    const newSource = idMap[edge.source]
+    const newTarget = idMap[edge.target]
+
+    // If both endpoints exist in our new set, recreate the connection.
+    if (newSource && newTarget) {
+      const newEdgeId = getNextEdgeId(edgeIdSet)
+      edgeIdSet.push(newEdgeId)
+
+      newEdges.push({
+        ...edge,
+        id: newEdgeId,
+        source: newSource,
+        target: newTarget,
+        selected: true,
+      })
+    }
+  })
+
+  getSelectedNodes.value.forEach((n) => (n.selected = false))
+  getSelectedEdges.value.forEach((e) => (e.selected = false))
+
+  addNodes(newNodes)
+  addEdges(newEdges)
+}
+
+const handleKeyDown = (event) => {
+  // Check if user is typing in an input field (don't trigger copy/paste then)
+  if (['INPUT', 'TEXTAREA'].includes(event.target.tagName)) return
+
+  const isCtrl = event.ctrlKey || event.metaKey // metaKey for Mac Cmd
+  const isShift = event.shiftKey
+
+  if (isCtrl && event.key === 'c') {
+    copySelection()
+  }
+
+  if (isCtrl && event.key === 'v') {
+    console.log(event.clientX)
+    pasteSelection(true)
+  }
+
+  if (isCtrl && event.key === 'd') {
+    event.preventDefault() // Stop browser bookmark dialog
+    copySelection()
+    pasteSelection()
+  }
+
+  if (isCtrl && !isShift && event.key === 'z' && historyStore.canUndo) {
+    handleUndo()
+  }
+  if (isCtrl && isShift && event.key === 'z' && historyStore.canRedo) {
+    handleRedo()
+  }
+}
+
 // --- Development Test Data ---
 onMounted(async () => {
+  document.addEventListener('keydown', handleKeyDown)
+  document.addEventListener('mousemove', onMouseMove)
   // import.meta.env.DEV is a Vite variable that is true
   // only when running 'yarn dev'
   if (import.meta.env.DEV) {
@@ -928,6 +1088,15 @@ onMounted(async () => {
       }
     }
   }
+})
+
+const onMouseMove = (event) => {
+  mousePosition.value = { x: event.clientX, y: event.clientY }
+}
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeyDown)
+  document.removeEventListener('mousemove', onMouseMove)
 })
 </script>
 
